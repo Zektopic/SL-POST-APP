@@ -125,55 +125,12 @@ class MainActivity : AppCompatActivity() {
                 super.onPageFinished(view, url)
                 // Stop pull-to-refresh spinner
                 binding.swipeRefreshLayout.isRefreshing = false
-                
-                // Inject Custom CSS safely via single-line escaped strings to prevent Webkit Syntax breaking the screen
-                val materialCSS = """
-                    #header, #footer { display: none !important; }
-                    /* Material UI overrides for Auth Forms */
-                    #loginModal .modal-content, #registetModal .modal-content, .modal-content.boxshadownone {
-                        border-radius: 16px !important; border: none !important;
-                        box-shadow: 0 4px 24px rgba(0,0,0,0.08) !important;
-                        padding: 24px !important; margin: 16px auto !important;
-                        background: #ffffff !important;
-                    }
-                    .modal-header { border-bottom: none !important; text-align: center !important; padding-top: 0 !important; }
-                    .modal-title { font-family: sans-serif !important; font-weight: 600 !important; color: #212121 !important; font-size: 26px !important; margin-bottom: 8px !important; }
-                    .input, select.form-control, input.form-control {
-                        width: 100% !important; padding: 14px 16px !important; margin-bottom: 16px !important;
-                        border: 1px solid #e0e0e0 !important; border-radius: 8px !important;
-                        box-sizing: border-box !important; font-size: 16px !important;
-                        background-color: #fafafa !important; outline: none !important;
-                        color: #212121 !important;
-                    }
-                    .input:focus, select.form-control:focus, input.form-control:focus { border-color: #6200EE !important; background-color: #fff !important; }
-                    #login-btn, input.button.raised.blue {
-                        background-color: #6200EE !important; color: white !important; border: none !important;
-                        border-radius: 24px !important; padding: 14px 24px !important; font-size: 16px !important;
-                        font-weight: bold !important; letter-spacing: 0.5px !important; text-transform: uppercase !important;
-                        width: 100% !important; margin-top: 16px !important; margin-bottom: 16px !important;
-                        box-shadow: 0 4px 10px rgba(98, 0, 238, 0.3) !important; appearance: none !important;
-                    }
-                    .register-now { text-align: center !important; font-size: 14px !important; margin-top: 10px !important; color: #757575 !important; }
-                    .register-now a { color: #6200EE !important; text-decoration: none !important; font-weight: bold !important; }
-                    .terms-and-conditions .dec-section {
-                        border-radius: 8px !important; border: 1px solid #eeeeee !important;
-                        background: #fafafa !important; padding: 12px !important; margin-bottom: 16px !important;
-                    }
-                    #terms-and-conditions-heading h4 { font-size: 14px !important; font-weight: bold !important; color: #424242 !important; }
-                    label[for="remember_me"], label[for="agree"] { font-size: 14px !important; color: #616161 !important; font-weight: normal !important; margin-left: 8px !important; vertical-align: middle !important; }
-                    input[type="checkbox"] { width: 18px !important; height: 18px !important; accent-color: #6200EE !important; vertical-align: middle !important; }
-                """.trimIndent().replace("\n", " ").replace("\"", "\\\"")
 
-                val cssOverride = """
-                    var style = document.createElement('style');
-                    style.innerHTML = "$materialCSS";
-                    document.head.appendChild(style);
-                """.trimIndent()
-                
-                view?.evaluateJavascript(
-                    "(function() { $cssOverride })();",
-                    null
-                )
+                // Inject CSS from assets/inject.css — keeps styles maintainable outside Kotlin
+                injectAssetCss(view, "inject.css")
+
+                // Inject UX enhancements from assets/inject.js
+                injectAssetJs(view, "inject.js")
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
@@ -233,6 +190,51 @@ class MainActivity : AppCompatActivity() {
             binding.errorView.visibility = View.GONE
             binding.swipeRefreshLayout.visibility = View.VISIBLE
             binding.webView.reload()
+        }
+    }
+
+    /**
+     * Reads a CSS file from src/main/assets, then injects it as a <style> tag
+     * via JavaScript. Using assets avoids brittle inline string escaping in Kotlin.
+     *
+     * Escaping strategy:
+     *   - backslashes doubled first
+     *   - double-quotes escaped
+     *   - newlines collapsed to \n so the final JS is one logical line
+     */
+    private fun injectAssetCss(view: WebView?, filename: String) {
+        val css = readAsset(filename) ?: return
+        val escaped = css
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\r\n", "\\n")
+            .replace("\n", "\\n")
+        val js = """(function(){
+            var s=document.createElement('style');
+            s.id='slp-injected-css';
+            s.innerHTML="$escaped";
+            var existing=document.getElementById('slp-injected-css');
+            if(existing){existing.remove();}
+            document.head.appendChild(s);
+        })();"""
+        view?.evaluateJavascript(js, null)
+    }
+
+    /**
+     * Reads a JS file from src/main/assets and evaluates it in the WebView.
+     * The file is wrapped in an IIFE so it cannot pollute the global scope.
+     */
+    private fun injectAssetJs(view: WebView?, filename: String) {
+        val js = readAsset(filename) ?: return
+        view?.evaluateJavascript("(function(){\n$js\n})();", null)
+    }
+
+    /** Reads a file from assets and returns its content, or null on error. */
+    private fun readAsset(filename: String): String? {
+        return try {
+            assets.open(filename).bufferedReader().use { it.readText() }
+        } catch (e: Exception) {
+            null // asset not found or unreadable — silently skip
         }
     }
 }
