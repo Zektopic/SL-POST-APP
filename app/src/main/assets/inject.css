@@ -1,554 +1,987 @@
 /* ================================================
-   SL POST STAMPS — MOBILE INJECTION STYLESHEET
-   Injected by the WebWrapper on every page load to
-   deliver a native-app Material Design 3 experience.
+   SL POST STAMPS — MOBILE INJECTION STYLESHEET v2
+   Material Design 3 layer for Bootstrap 3 site.
+   Targets actual site selectors for smooth cohesion.
    ================================================ */
 
-/* -------- BASE RESET & TYPOGRAPHY -------- */
+/* ──────── DESIGN TOKENS ──────── */
+:root {
+  --slp-primary:    #6200EE;
+  --slp-primary-dk: #3700B3;
+  --slp-primary-lt: #BB86FC;
+  --slp-on-primary: #FFFFFF;
+  --slp-secondary:  #7965AF;
+  --slp-tertiary:   #B45309;
+  --slp-surface:    #FEFBFF;
+  --slp-surface-dim:#F5F0FA;
+  --slp-on-surface: #1C1B1F;
+  --slp-on-surface-v:#49454F;
+  --slp-outline:    #CAC4D0;
+  --slp-outline-var:#E7E0EC;
+  --slp-container:  #F3EDFA;
+  --slp-error:      #B3261E;
+  --slp-success:    #2E7D32;
+  --slp-radius-sm:  10px;
+  --slp-radius-md:  16px;
+  --slp-radius-lg:  24px;
+  --slp-shadow-1:   0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+  --slp-shadow-2:   0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
+  --slp-shadow-3:   0 8px 24px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.06);
+  --slp-transition: .25s cubic-bezier(.4, 0, .2, 1);
+}
+
+/* ──────── BASE RESET ──────── */
 *, *::before, *::after {
-    box-sizing: border-box !important;
-    -webkit-tap-highlight-color: rgba(98, 0, 238, 0.08) !important;
+  box-sizing: border-box !important;
+  -webkit-tap-highlight-color: rgba(98,0,238,.06) !important;
 }
 
-body, html {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-                 Oxygen, Ubuntu, Cantarell, sans-serif !important;
-    -webkit-font-smoothing: antialiased !important;
-    -moz-osx-font-smoothing: grayscale !important;
-    scroll-behavior: smooth !important;
-    overscroll-behavior: contain !important;
-    background-color: #f7f4fc !important;
+html {
+  scroll-behavior: smooth !important;
+  -webkit-text-size-adjust: 100% !important;
 }
 
-/* -------- HIDE NATIVE WEBSITE CHROME -------- */
-/* Replaced entirely by native app Toolbar + NavigationDrawer.
-   EXCEPTION: on /users/login and /users/register the header is kept so the
-   site's own page structure renders correctly (it may not use a full modal
-   on those dedicated pages). The JS injector skips hiding on auth pages. */
+body {
+  font-family: 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif !important;
+  -webkit-font-smoothing: antialiased !important;
+  background: var(--slp-surface) !important;
+  color: var(--slp-on-surface) !important;
+  overscroll-behavior: contain !important;
+  line-height: 1.6 !important;
+  /* Prevent FOUC — content fades in after injection */
+  animation: slpFadeIn .4s ease-out both !important;
+}
+
+@keyframes slpFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ──────── HIDE WEBSITE CHROME ──────── */
+/* Site header/nav replaced by native Toolbar + Drawer.
+   Exception: auth pages keep header (tagged via JS). */
 body:not(.slp-auth-page) #header,
 body:not(.slp-auth-page) header,
 body:not(.slp-auth-page) .header,
 body:not(.slp-auth-page) .site-header,
 body:not(.slp-auth-page) .main-header,
 body:not(.slp-auth-page) nav.navbar,
+body:not(.slp-auth-page) .navbar,
+body:not(.slp-auth-page) .navbar-fixed-top,
+body:not(.slp-auth-page) .navbar-default,
 body:not(.slp-auth-page) #main-nav,
 body:not(.slp-auth-page) .top-bar,
 body:not(.slp-auth-page) .header-top,
 body:not(.slp-auth-page) .header-bottom {
-    display: none !important;
+  display: none !important;
 }
 
-/* Footer always hidden — app provides no equivalent */
+/* Footer always hidden */
 footer, #footer, .footer, .site-footer, .main-footer,
 .footer-widgets, .footer-bottom,
 .back-to-top, .scroll-to-top, #back-to-top,
 .breadcrumb-wrapper, .breadcrumb,
 .page-header.breadcrumb-section {
-    display: none !important;
+  display: none !important;
 }
 
-/* Remove padding/margin reserved for the hidden header */
+/* Remove spacing reserved for hidden header */
 body > .page-wrapper,
 body > .wrapper,
 .main-content,
 #main-content,
-.site-content {
-    padding-top: 0 !important;
-    margin-top: 0 !important;
+.site-content,
+body > .container,
+body > .container-fluid {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
 }
 
-/* -------- LAYOUT & CONTAINER -------- */
+/* Fix body top padding that websites set for fixed navbars */
+body {
+  padding-top: 0 !important;
+}
+
+/* ──────── LAYOUT & CONTAINER ──────── */
 .container,
 .container-fluid {
-    padding-left: 16px !important;
-    padding-right: 16px !important;
+  padding-left: 14px !important;
+  padding-right: 14px !important;
+  max-width: 100% !important;
 }
 
-/* -------- BANNERS / HERO / CAROUSEL -------- */
-.hero-section, .banner-section, .home-banner,
-.slider-area, .owl-carousel, .carousel {
-    border-radius: 20px !important;
-    overflow: hidden !important;
-    margin: 12px 4px !important;
-    box-shadow: 0 4px 20px rgba(98, 0, 238, 0.12) !important;
+.row {
+  margin-left: -8px !important;
+  margin-right: -8px !important;
 }
 
-/* -------- PRODUCT CARDS -------- */
-.product-item, .product-card, .stamp-item,
-ul.products li.product, .product, .product-grid-item {
-    border-radius: 18px !important;
-    overflow: hidden !important;
-    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.07) !important;
-    border: 1px solid #f0eaf8 !important;
-    background: #ffffff !important;
-    transition: transform 0.18s ease, box-shadow 0.18s ease !important;
-    margin-bottom: 16px !important;
+.row > [class*="col-"] {
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
+/* ──────── CART BAR (the blue "My cart" strip) ──────── */
+.btn-info,
+a.btn-info,
+.btn-info:hover,
+.btn-info:focus,
+.btn-info:active {
+  background: linear-gradient(135deg, var(--slp-primary) 0%, var(--slp-primary-dk) 100%) !important;
+  border: none !important;
+  border-radius: var(--slp-radius-lg) !important;
+  color: var(--slp-on-primary) !important;
+  font-weight: 600 !important;
+  letter-spacing: .3px !important;
+  box-shadow: var(--slp-shadow-1) !important;
+  transition: all var(--slp-transition) !important;
+  padding: 10px 20px !important;
+}
+
+/* ──────── SEARCH PANEL ──────── */
+.panel {
+  border: 1px solid var(--slp-outline-var) !important;
+  border-radius: var(--slp-radius-md) !important;
+  box-shadow: var(--slp-shadow-1) !important;
+  background: #fff !important;
+  overflow: hidden !important;
+  margin-bottom: 16px !important;
+  transition: box-shadow var(--slp-transition) !important;
+}
+
+.panel-heading,
+.panel-default > .panel-heading {
+  background: var(--slp-container) !important;
+  color: var(--slp-primary) !important;
+  border-bottom: 1px solid var(--slp-outline-var) !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  padding: 14px 16px !important;
+  letter-spacing: .3px !important;
+  text-transform: uppercase !important;
+  border-radius: var(--slp-radius-md) var(--slp-radius-md) 0 0 !important;
+}
+
+.panel-body {
+  padding: 16px !important;
+}
+
+/* ──────── CATEGORY TABS (STAMPS / MINIATURE SHEETS / etc.) ──────── */
+.nav-tabs {
+  border-bottom: 2px solid var(--slp-outline-var) !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  gap: 4px !important;
+  padding: 4px 0 !important;
+  background: transparent !important;
+}
+
+.nav-tabs::-webkit-scrollbar {
+  display: none !important;
+}
+
+.nav-tabs > li {
+  float: none !important;
+  flex-shrink: 0 !important;
+}
+
+.nav-tabs > li > a {
+  border: none !important;
+  border-radius: var(--slp-radius-lg) !important;
+  padding: 10px 20px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  color: var(--slp-on-surface-v) !important;
+  background: transparent !important;
+  transition: all var(--slp-transition) !important;
+  margin: 0 !important;
+  text-decoration: none !important;
+}
+
+.nav-tabs > li > a:hover,
+.nav-tabs > li > a:focus {
+  background: var(--slp-container) !important;
+  color: var(--slp-primary) !important;
+  border: none !important;
+}
+
+.nav-tabs > li.active > a,
+.nav-tabs > li.active > a:hover,
+.nav-tabs > li.active > a:focus {
+  background: var(--slp-primary) !important;
+  color: var(--slp-on-primary) !important;
+  border: none !important;
+  border-radius: var(--slp-radius-lg) !important;
+  box-shadow: 0 2px 8px rgba(98,0,238,.25) !important;
+}
+
+/* Dark tab bar background → match surface */
+.tab-bar,
+.nav-tabs-container,
+.tab-content > .active {
+  background: transparent !important;
+}
+
+/* ──────── PRODUCT CARDS ──────── */
+/* Target the actual site structure: each product is in a col-sm-3 div */
+.product-item,
+.product-card,
+.stamp-item,
+ul.products li.product,
+.product,
+.product-grid-item,
+.col-sm-3 > div,
+.tab-pane .col-sm-3 > div {
+  border-radius: var(--slp-radius-md) !important;
+  overflow: hidden !important;
+  box-shadow: var(--slp-shadow-1) !important;
+  border: 1px solid var(--slp-outline-var) !important;
+  background: #ffffff !important;
+  transition: transform var(--slp-transition),
+              box-shadow var(--slp-transition) !important;
+  margin-bottom: 16px !important;
 }
 
 .product-item:active,
 .product-card:active,
-ul.products li.product:active {
-    transform: scale(0.97) !important;
-    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.06) !important;
+ul.products li.product:active,
+.col-sm-3 > div:active {
+  transform: scale(0.975) !important;
+  box-shadow: var(--slp-shadow-1) !important;
 }
 
 /* Product images */
-.product-item img, .product-card img, ul.products li.product img,
-.stamp-item img {
-    width: 100% !important;
-    height: 180px !important;
-    object-fit: cover !important;
-    border-radius: 18px 18px 0 0 !important;
-    display: block !important;
+.product-item img,
+.product-card img,
+ul.products li.product img,
+.stamp-item img,
+.col-sm-3 img,
+.tab-pane img {
+  width: 100% !important;
+  height: auto !important;
+  max-height: 200px !important;
+  object-fit: contain !important;
+  display: block !important;
+  padding: 12px !important;
+  background: #FAFAFA !important;
+  transition: transform .3s ease !important;
+}
+
+/* Category label above each product (e.g., "STAMPS (PHILATELIC)") */
+.item-type,
+label.item-type {
+  display: inline-block !important;
+  background: var(--slp-container) !important;
+  color: var(--slp-primary) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: .8px !important;
+  text-transform: uppercase !important;
+  padding: 4px 10px !important;
+  border-radius: 20px !important;
+  margin: 10px 12px 6px !important;
 }
 
 /* Product title */
-.product-item .product-title, .product-card .title,
-.product-name, ul.products li.product .woocommerce-loop-product__title {
-    font-size: 14px !important;
-    font-weight: 600 !important;
-    color: #1a1a2e !important;
-    padding: 10px 12px 4px !important;
-    line-height: 1.4 !important;
+.product-item .product-title,
+.product-card .title,
+.product-name,
+ul.products li.product .woocommerce-loop-product__title,
+.col-sm-3 a {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--slp-on-surface) !important;
+  text-decoration: none !important;
+  line-height: 1.4 !important;
+  display: block !important;
+  padding: 4px 12px !important;
 }
 
-/* -------- PRICES -------- */
-.price, .product-price, .woocommerce-Price-amount,
-ins .woocommerce-Price-amount {
-    color: #6200EE !important;
-    font-weight: 700 !important;
-    font-size: 16px !important;
-    padding: 4px 12px 12px !important;
-    display: block !important;
+/* ──────── PRICES ──────── */
+.price,
+.product-price,
+.woocommerce-Price-amount,
+ins .woocommerce-Price-amount,
+b, strong {
+  color: var(--slp-primary) !important;
+  font-weight: 700 !important;
+  font-size: 16px !important;
+  padding: 6px 12px !important;
+  display: block !important;
 }
 
-del .woocommerce-Price-amount, .original-price, .old-price {
-    color: #9e9e9e !important;
-    font-size: 13px !important;
-    font-weight: 400 !important;
-    text-decoration: line-through !important;
+/* Only apply to price-context bold text, not ALL bold */
+.tab-pane b,
+.tab-pane strong,
+.col-sm-3 b,
+.col-sm-3 strong {
+  color: var(--slp-primary) !important;
+  font-weight: 700 !important;
+  font-size: 16px !important;
 }
 
-/* -------- PRIMARY BUTTONS -------- */
-.btn-primary, .button, input[type="submit"], input[type="button"],
-.add-to-cart, .add_to_cart_button, .single_add_to_cart_button,
-.checkout-button, .wc-proceed-to-checkout a,
-#login-btn, input.button.raised.blue {
-    background: linear-gradient(135deg, #6200EE 0%, #7c3aed 100%) !important;
-    color: #ffffff !important;
-    border: none !important;
-    border-radius: 24px !important;
-    padding: 13px 28px !important;
-    font-size: 15px !important;
-    font-weight: 600 !important;
-    letter-spacing: 0.4px !important;
-    box-shadow: 0 4px 14px rgba(98, 0, 238, 0.35) !important;
-    transition: all 0.2s ease !important;
-    text-transform: none !important;
-    cursor: pointer !important;
-    display: inline-block !important;
-    text-align: center !important;
-    -webkit-appearance: none !important;
-    appearance: none !important;
+del .woocommerce-Price-amount,
+.original-price,
+.old-price {
+  color: #9e9e9e !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  text-decoration: line-through !important;
 }
 
-.btn-primary:active, .button:active,
-input[type="submit"]:active, .add_to_cart_button:active {
-    transform: scale(0.97) !important;
-    box-shadow: 0 2px 8px rgba(98, 0, 238, 0.25) !important;
+/* ──────── BUTTONS — PRIMARY (Add to Cart) ──────── */
+.btn-success,
+.btn-success:hover,
+.btn-success:focus,
+.btn-success:active,
+.btn-success.active,
+.add-to-cart,
+.add_to_cart_button,
+.single_add_to_cart_button {
+  background: linear-gradient(135deg, var(--slp-primary) 0%, #7c3aed 100%) !important;
+  color: var(--slp-on-primary) !important;
+  border: none !important;
+  border-radius: var(--slp-radius-sm) !important;
+  padding: 11px 20px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: .4px !important;
+  box-shadow: 0 2px 8px rgba(98,0,238,.2) !important;
+  transition: all var(--slp-transition) !important;
+  text-transform: none !important;
+  cursor: pointer !important;
+  display: block !important;
+  text-align: center !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  margin: 8px 12px 14px !important;
+  width: calc(100% - 24px) !important;
 }
 
-/* Outlined / secondary buttons */
-.btn-secondary, .btn-outline-primary, button.alt {
-    background: transparent !important;
-    color: #6200EE !important;
-    border: 2px solid #6200EE !important;
-    border-radius: 24px !important;
-    padding: 11px 26px !important;
-    font-weight: 600 !important;
-    transition: all 0.2s ease !important;
+.btn-success:active,
+.add_to_cart_button:active {
+  transform: scale(0.96) !important;
+  box-shadow: 0 1px 4px rgba(98,0,238,.15) !important;
 }
 
-/* -------- FORM INPUTS -------- */
-input[type="text"], input[type="email"], input[type="password"],
-input[type="number"], input[type="tel"], input[type="search"],
-textarea, select, .form-control {
-    border: 1.5px solid #e0d7f0 !important;
-    border-radius: 12px !important;
-    padding: 13px 16px !important;
-    font-size: 15px !important;
-    color: #212121 !important;
-    background: #fdfbff !important;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
-    outline: none !important;
-    width: 100% !important;
-    margin-bottom: 14px !important;
+/* ──────── BUTTONS — PRIMARY GENERAL ──────── */
+.btn-primary,
+.button,
+input[type="submit"],
+input[type="button"],
+.checkout-button,
+.wc-proceed-to-checkout a,
+#login-btn,
+input.button.raised.blue {
+  background: linear-gradient(135deg, var(--slp-primary) 0%, #7c3aed 100%) !important;
+  color: var(--slp-on-primary) !important;
+  border: none !important;
+  border-radius: var(--slp-radius-lg) !important;
+  padding: 13px 28px !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  letter-spacing: .4px !important;
+  box-shadow: 0 4px 14px rgba(98,0,238,.28) !important;
+  transition: all var(--slp-transition) !important;
+  text-transform: none !important;
+  cursor: pointer !important;
+  display: inline-block !important;
+  text-align: center !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
 }
 
-input:focus, textarea:focus, select:focus, .form-control:focus {
-    border-color: #6200EE !important;
-    box-shadow: 0 0 0 4px rgba(98, 0, 238, 0.10) !important;
-    background: #ffffff !important;
+.btn-primary:active,
+.button:active,
+input[type="submit"]:active {
+  transform: scale(0.97) !important;
+  box-shadow: 0 2px 8px rgba(98,0,238,.2) !important;
 }
 
-label, .form-label {
-    font-size: 14px !important;
-    font-weight: 600 !important;
-    color: #424242 !important;
-    margin-bottom: 6px !important;
-    display: block !important;
+/* ──────── BUTTONS — SECONDARY ──────── */
+.btn-default,
+.btn-secondary,
+.btn-outline-primary,
+button.alt {
+  background: transparent !important;
+  color: var(--slp-primary) !important;
+  border: 2px solid var(--slp-primary) !important;
+  border-radius: var(--slp-radius-lg) !important;
+  padding: 11px 24px !important;
+  font-weight: 600 !important;
+  transition: all var(--slp-transition) !important;
 }
 
-/* -------- LOGIN / REGISTER MODALS -------- */
-#loginModal .modal-content, #registetModal .modal-content,
-.modal-content.boxshadownone, .modal-content {
-    border-radius: 24px !important;
-    border: none !important;
-    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.14) !important;
-    padding: 28px !important;
-    margin: 16px auto !important;
-    background: #ffffff !important;
+.btn-default:hover,
+.btn-default:focus,
+.btn-default:active {
+  background: var(--slp-container) !important;
+  color: var(--slp-primary) !important;
+  border-color: var(--slp-primary) !important;
+}
+
+/* ──────── FORM INPUTS ──────── */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="search"],
+textarea,
+select,
+.form-control {
+  border: 1.5px solid var(--slp-outline) !important;
+  border-radius: var(--slp-radius-sm) !important;
+  padding: 12px 16px !important;
+  font-size: 15px !important;
+  color: var(--slp-on-surface) !important;
+  background: #fff !important;
+  transition: border-color var(--slp-transition),
+              box-shadow var(--slp-transition) !important;
+  outline: none !important;
+  width: 100% !important;
+  margin-bottom: 12px !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+input:focus,
+textarea:focus,
+select:focus,
+.form-control:focus {
+  border-color: var(--slp-primary) !important;
+  box-shadow: 0 0 0 3px rgba(98,0,238,.10) !important;
+  background: #fff !important;
+}
+
+label,
+.form-label,
+.control-label {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--slp-on-surface-v) !important;
+  margin-bottom: 6px !important;
+  display: block !important;
+}
+
+/* ──────── CHECKBOXES & RADIO ──────── */
+input[type="checkbox"],
+input[type="radio"] {
+  width: 18px !important;
+  height: 18px !important;
+  accent-color: var(--slp-primary) !important;
+  cursor: pointer !important;
+  margin-right: 8px !important;
+  vertical-align: middle !important;
+}
+
+/* ──────── LOGIN / REGISTER PAGES ──────── */
+body.slp-auth-page .navbar {
+  background: linear-gradient(135deg, var(--slp-primary) 0%, var(--slp-primary-dk) 100%) !important;
+  border: none !important;
+  box-shadow: var(--slp-shadow-2) !important;
+}
+
+body.slp-auth-page .navbar a,
+body.slp-auth-page .navbar-brand {
+  color: var(--slp-on-primary) !important;
+}
+
+#loginModal .modal-content,
+#registetModal .modal-content,
+.modal-content.boxshadownone,
+.modal-content {
+  border-radius: var(--slp-radius-lg) !important;
+  border: none !important;
+  box-shadow: var(--slp-shadow-3) !important;
+  padding: 24px !important;
+  margin: 16px auto !important;
+  background: #fff !important;
 }
 
 .modal-header {
-    border-bottom: none !important;
-    text-align: center !important;
-    padding: 0 0 16px !important;
-    justify-content: center !important;
+  border-bottom: none !important;
+  text-align: center !important;
+  padding: 0 0 16px !important;
+  justify-content: center !important;
 }
 
 .modal-title {
-    font-weight: 700 !important;
-    color: #1a1a2e !important;
-    font-size: 24px !important;
+  font-weight: 700 !important;
+  color: var(--slp-on-surface) !important;
+  font-size: 22px !important;
 }
 
 .modal-footer {
-    border-top: none !important;
-    justify-content: center !important;
+  border-top: none !important;
+  justify-content: center !important;
 }
 
-.register-now, .have-account {
-    text-align: center !important;
-    font-size: 14px !important;
-    margin-top: 10px !important;
-    color: #757575 !important;
+.register-now,
+.have-account {
+  text-align: center !important;
+  font-size: 14px !important;
+  margin-top: 10px !important;
+  color: var(--slp-on-surface-v) !important;
 }
 
-.register-now a, .have-account a {
-    color: #6200EE !important;
-    font-weight: 700 !important;
+.register-now a,
+.have-account a {
+  color: var(--slp-primary) !important;
+  font-weight: 700 !important;
 }
 
-/* -------- NAV TABS / CATEGORY FILTERS -------- */
-.nav-tabs, .filter-bar, .category-tabs {
-    border-bottom: 2px solid #f0eaf8 !important;
-    flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    scrollbar-width: none !important;
-    -ms-overflow-style: none !important;
-}
-
-.nav-tabs::-webkit-scrollbar,
-.filter-bar::-webkit-scrollbar { display: none !important; }
-
-.nav-tabs .nav-link, .filter-bar a, .category-tabs a {
-    border-radius: 20px !important;
-    padding: 8px 18px !important;
-    font-size: 13px !important;
-    font-weight: 600 !important;
-    white-space: nowrap !important;
-    color: #6200EE !important;
-    border: none !important;
-    margin-right: 6px !important;
-}
-
-.nav-tabs .nav-link.active,
-.nav-tabs .nav-item.active .nav-link,
-.filter-bar a.active {
-    background: #6200EE !important;
-    color: #ffffff !important;
-    border-radius: 20px !important;
-    border: none !important;
-}
-
-/* -------- HEADINGS -------- */
+/* ──────── HEADINGS ──────── */
 h1, h2, h3, h4, h5 {
-    font-weight: 700 !important;
-    color: #1a1a2e !important;
-    letter-spacing: -0.3px !important;
-    line-height: 1.3 !important;
+  font-weight: 700 !important;
+  color: var(--slp-on-surface) !important;
+  letter-spacing: -.2px !important;
+  line-height: 1.3 !important;
 }
 
-h1 { font-size: 26px !important; }
-h2 { font-size: 22px !important; }
-h3 { font-size: 18px !important; }
+h1 { font-size: 24px !important; }
+h2 { font-size: 20px !important; }
+h3 { font-size: 17px !important; }
 
-.section-title, .category-title, h2.title {
-    position: relative !important;
-    padding-bottom: 12px !important;
-    margin-bottom: 20px !important;
+.section-title,
+.category-title,
+h2.title {
+  position: relative !important;
+  padding-bottom: 12px !important;
+  margin-bottom: 18px !important;
 }
 
 .section-title::after {
-    content: '' !important;
-    position: absolute !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    width: 40px !important;
-    height: 3px !important;
-    background: #6200EE !important;
-    border-radius: 3px !important;
+  content: '' !important;
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  width: 36px !important;
+  height: 3px !important;
+  background: var(--slp-primary) !important;
+  border-radius: 3px !important;
 }
 
-/* -------- CART & CHECKOUT -------- */
-.cart-table td, .woocommerce-cart-form table td,
-.woocommerce-checkout-review-order-table td, .order-summary td {
-    padding: 14px 8px !important;
-    border-bottom: 1px solid #f0f0f0 !important;
-    vertical-align: middle !important;
-    font-size: 14px !important;
+/* ──────── CART & CHECKOUT ──────── */
+.cart-table td,
+.woocommerce-cart-form table td,
+.woocommerce-checkout-review-order-table td,
+.order-summary td,
+table td {
+  padding: 12px 10px !important;
+  border-bottom: 1px solid var(--slp-outline-var) !important;
+  vertical-align: middle !important;
+  font-size: 14px !important;
+  transition: background var(--slp-transition) !important;
 }
 
-.cart-table th, .woocommerce-cart-form table th {
-    font-size: 12px !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.6px !important;
-    color: #757575 !important;
-    font-weight: 600 !important;
-    border-bottom: 2px solid #f0eaf8 !important;
-    padding: 10px 8px !important;
+.cart-table th,
+.woocommerce-cart-form table th,
+table th {
+  font-size: 12px !important;
+  text-transform: uppercase !important;
+  letter-spacing: .6px !important;
+  color: var(--slp-on-surface-v) !important;
+  font-weight: 700 !important;
+  border-bottom: 2px solid var(--slp-outline-var) !important;
+  padding: 10px !important;
+  background: var(--slp-container) !important;
 }
 
-.cart_totals h2, .order-total td strong {
-    color: #6200EE !important;
-    font-size: 20px !important;
+.cart_totals h2,
+.order-total td strong {
+  color: var(--slp-primary) !important;
+  font-size: 18px !important;
 }
 
-/* -------- DATA TABLES -------- */
-table.dataTable, .data-table, .order-table, .account-table {
-    border-radius: 16px !important;
-    overflow: hidden !important;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05) !important;
-    border: 1px solid #eee !important;
+/* ──────── DATA TABLES ──────── */
+table.dataTable,
+.data-table,
+.order-table,
+.account-table,
+.table {
+  border-radius: var(--slp-radius-md) !important;
+  overflow: hidden !important;
+  box-shadow: var(--slp-shadow-1) !important;
+  border: 1px solid var(--slp-outline-var) !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  width: 100% !important;
 }
 
-table.dataTable thead th, .data-table thead th, .account-table thead th {
-    background: #6200EE !important;
-    color: #ffffff !important;
-    font-weight: 600 !important;
-    font-size: 13px !important;
-    letter-spacing: 0.3px !important;
-    border: none !important;
-    padding: 14px 16px !important;
+table thead th {
+  background: var(--slp-primary) !important;
+  color: var(--slp-on-primary) !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  letter-spacing: .4px !important;
+  border: none !important;
+  padding: 12px 14px !important;
 }
 
-table.dataTable tbody tr:nth-child(even) td,
-.data-table tbody tr:nth-child(even) td {
-    background: #faf8ff !important;
+table tbody tr:nth-child(even) td {
+  background: var(--slp-surface-dim) !important;
 }
 
-table.dataTable tbody td, .data-table tbody td {
-    padding: 12px 16px !important;
-    border-bottom: 1px solid #f5f5f5 !important;
-    font-size: 14px !important;
-    color: #424242 !important;
+table tbody tr {
+  transition: background var(--slp-transition) !important;
 }
 
-/* -------- ALERTS / NOTICES -------- */
-.alert, .notice, .woocommerce-message,
-.woocommerce-error, .woocommerce-info, .notification {
-    border-radius: 14px !important;
-    border: none !important;
-    border-left: 4px solid #6200EE !important;
-    background: #f3e5ff !important;
-    padding: 14px 18px !important;
-    margin-bottom: 16px !important;
-    font-size: 14px !important;
+table tbody td {
+  padding: 12px 14px !important;
+  border-bottom: 1px solid var(--slp-outline-var) !important;
+  font-size: 14px !important;
+  color: var(--slp-on-surface-v) !important;
 }
 
-.woocommerce-error, .alert-danger {
-    border-left-color: #e53935 !important;
-    background: #ffebee !important;
-    color: #c62828 !important;
+/* ──────── ALERTS / NOTICES ──────── */
+.alert,
+.notice,
+.woocommerce-message,
+.woocommerce-error,
+.woocommerce-info,
+.notification {
+  border-radius: var(--slp-radius-sm) !important;
+  border: none !important;
+  border-left: 4px solid var(--slp-primary) !important;
+  background: var(--slp-container) !important;
+  padding: 14px 18px !important;
+  margin-bottom: 14px !important;
+  font-size: 14px !important;
+  transition: opacity var(--slp-transition) !important;
 }
 
-.alert-success, .woocommerce-message {
-    border-left-color: #43a047 !important;
-    background: #e8f5e9 !important;
-    color: #2e7d32 !important;
+.alert-danger,
+.woocommerce-error {
+  border-left-color: var(--slp-error) !important;
+  background: #FFF0EE !important;
+  color: var(--slp-error) !important;
 }
 
-/* -------- CARDS & PANELS -------- */
-.card, .panel, .box, .widget, .account-card {
-    border-radius: 16px !important;
-    border: 1px solid #f0eaf8 !important;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05) !important;
-    overflow: hidden !important;
-    background: #ffffff !important;
+.alert-success,
+.woocommerce-message {
+  border-left-color: var(--slp-success) !important;
+  background: #EDF7ED !important;
+  color: var(--slp-success) !important;
 }
 
-.card-header, .panel-heading {
-    background: transparent !important;
-    border-bottom: 1px solid #f0eaf8 !important;
-    font-weight: 700 !important;
-    font-size: 16px !important;
-    color: #1a1a2e !important;
-    padding: 16px !important;
+.alert-info {
+  border-left-color: var(--slp-secondary) !important;
+  background: #F0ECFA !important;
+  color: var(--slp-secondary) !important;
 }
 
-.card-body, .panel-body { padding: 16px !important; }
-
-/* -------- BADGES & CHIPS -------- */
-.badge, .label, .tag, .chip {
-    border-radius: 20px !important;
-    font-size: 11px !important;
-    font-weight: 700 !important;
-    padding: 4px 10px !important;
-    letter-spacing: 0.3px !important;
+/* ──────── CARDS & PANELS ──────── */
+.card,
+.box,
+.widget,
+.account-card,
+.well {
+  border-radius: var(--slp-radius-md) !important;
+  border: 1px solid var(--slp-outline-var) !important;
+  box-shadow: var(--slp-shadow-1) !important;
+  overflow: hidden !important;
+  background: #fff !important;
+  transition: box-shadow var(--slp-transition) !important;
 }
 
-.badge-primary, .badge-info {
-    background: #ede7f6 !important;
-    color: #6200EE !important;
+.card-header,
+.panel-heading {
+  background: var(--slp-container) !important;
+  border-bottom: 1px solid var(--slp-outline-var) !important;
+  font-weight: 700 !important;
+  font-size: 15px !important;
+  color: var(--slp-on-surface) !important;
+  padding: 14px 16px !important;
 }
 
-/* -------- CHECKBOXES & RADIO -------- */
-input[type="checkbox"], input[type="radio"] {
-    width: 18px !important;
-    height: 18px !important;
-    accent-color: #6200EE !important;
-    cursor: pointer !important;
-    margin-right: 8px !important;
-    vertical-align: middle !important;
+.card-body,
+.panel-body {
+  padding: 16px !important;
 }
 
-/* -------- TERMS BOX -------- */
-.terms-and-conditions .dec-section, .terms-content {
-    border-radius: 10px !important;
-    border: 1px solid #e8def8 !important;
-    background: #faf8ff !important;
-    padding: 14px !important;
-    margin-bottom: 16px !important;
-    font-size: 13px !important;
-    color: #616161 !important;
-    max-height: 120px !important;
-    overflow-y: auto !important;
+/* ──────── BADGES & CHIPS ──────── */
+.badge,
+.label,
+.tag,
+.chip {
+  border-radius: 20px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  padding: 4px 10px !important;
+  letter-spacing: .3px !important;
 }
 
-#terms-and-conditions-heading h4, .terms-title {
-    font-size: 14px !important;
-    font-weight: 700 !important;
-    color: #424242 !important;
-    margin-bottom: 8px !important;
+.badge-primary,
+.badge-info,
+.label-primary,
+.label-info {
+  background: var(--slp-container) !important;
+  color: var(--slp-primary) !important;
 }
 
-/* -------- PAGINATION -------- */
-.pagination .page-item .page-link {
-    border-radius: 10px !important;
-    border: 1.5px solid #e0d7f0 !important;
-    color: #6200EE !important;
-    margin: 0 2px !important;
-    padding: 8px 14px !important;
-    font-weight: 600 !important;
+.label-success,
+.badge-success {
+  background: #EDF7ED !important;
+  color: var(--slp-success) !important;
 }
 
-.pagination .page-item.active .page-link {
-    background: #6200EE !important;
-    border-color: #6200EE !important;
-    color: #ffffff !important;
+.label-danger,
+.badge-danger {
+  background: #FFF0EE !important;
+  color: var(--slp-error) !important;
 }
 
-/* -------- SEARCH BAR -------- */
-.search-form, .search-bar, .search-box {
-    border-radius: 24px !important;
-    overflow: hidden !important;
+.label-warning,
+.badge-warning {
+  background: #FFF8E6 !important;
+  color: var(--slp-tertiary) !important;
+}
+
+/* ──────── TERMS BOX ──────── */
+.terms-and-conditions .dec-section,
+.terms-content {
+  border-radius: var(--slp-radius-sm) !important;
+  border: 1px solid var(--slp-outline-var) !important;
+  background: var(--slp-surface-dim) !important;
+  padding: 14px !important;
+  margin-bottom: 16px !important;
+  font-size: 13px !important;
+  color: var(--slp-on-surface-v) !important;
+  max-height: 120px !important;
+  overflow-y: auto !important;
+}
+
+/* ──────── PAGINATION ──────── */
+.pagination > li > a,
+.pagination > li > span {
+  border-radius: var(--slp-radius-sm) !important;
+  border: 1.5px solid var(--slp-outline) !important;
+  color: var(--slp-primary) !important;
+  margin: 0 3px !important;
+  padding: 8px 14px !important;
+  font-weight: 600 !important;
+  transition: all var(--slp-transition) !important;
+  background: #fff !important;
+}
+
+.pagination > .active > a,
+.pagination > .active > span,
+.pagination > .active > a:hover {
+  background: var(--slp-primary) !important;
+  border-color: var(--slp-primary) !important;
+  color: var(--slp-on-primary) !important;
+}
+
+.pagination > li > a:hover {
+  background: var(--slp-container) !important;
+  border-color: var(--slp-primary) !important;
+}
+
+/* ──────── SEARCH BAR ──────── */
+.search-form,
+.search-bar,
+.search-box {
+  border-radius: var(--slp-radius-lg) !important;
+  overflow: hidden !important;
 }
 
 input[type="search"] {
-    border-radius: 24px !important;
-    border: 1.5px solid #e0d7f0 !important;
-    padding: 12px 20px !important;
-    background: #fdfbff !important;
+  border-radius: var(--slp-radius-lg) !important;
+  border: 1.5px solid var(--slp-outline) !important;
+  padding: 12px 20px !important;
+  background: #fff !important;
 }
 
 input[type="search"]:focus {
-    border-color: #6200EE !important;
-    box-shadow: 0 0 0 4px rgba(98, 0, 238, 0.10) !important;
-    background: #ffffff !important;
+  border-color: var(--slp-primary) !important;
+  box-shadow: 0 0 0 3px rgba(98,0,238,.10) !important;
 }
 
-/* -------- QUANTITY INPUT -------- */
-input.qty, .quantity input {
-    border-radius: 10px !important;
-    border: 1.5px solid #e0d7f0 !important;
-    padding: 8px 12px !important;
-    font-size: 16px !important;
-    font-weight: 600 !important;
-    text-align: center !important;
-    width: 70px !important;
-    color: #1a1a2e !important;
+/* ──────── QUANTITY INPUT ──────── */
+input.qty,
+.quantity input {
+  border-radius: var(--slp-radius-sm) !important;
+  border: 1.5px solid var(--slp-outline) !important;
+  padding: 8px 12px !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  width: 70px !important;
+  color: var(--slp-on-surface) !important;
 }
 
-/* -------- PRODUCT DETAIL -------- */
-.product_title, .entry-title, .product-single-title {
-    font-size: 22px !important;
-    font-weight: 700 !important;
-    color: #1a1a2e !important;
-    margin-bottom: 8px !important;
-    line-height: 1.3 !important;
+/* ──────── PRODUCT DETAIL PAGE ──────── */
+.product_title,
+.entry-title,
+.product-single-title {
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  color: var(--slp-on-surface) !important;
+  margin-bottom: 8px !important;
+  line-height: 1.3 !important;
 }
 
 .woocommerce-product-details__short-description,
 .product-description {
-    font-size: 14px !important;
-    color: #616161 !important;
-    line-height: 1.7 !important;
-    margin-bottom: 16px !important;
+  font-size: 14px !important;
+  color: var(--slp-on-surface-v) !important;
+  line-height: 1.7 !important;
+  margin-bottom: 16px !important;
 }
 
-/* -------- MY ACCOUNT -------- */
+/* ──────── MY ACCOUNT ──────── */
 .woocommerce-MyAccount-navigation ul {
-    list-style: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 
 .woocommerce-MyAccount-navigation ul li a {
-    display: flex !important;
-    align-items: center !important;
-    padding: 14px 16px !important;
-    border-radius: 12px !important;
-    font-weight: 600 !important;
-    font-size: 15px !important;
-    color: #424242 !important;
-    text-decoration: none !important;
-    margin-bottom: 4px !important;
-    transition: all 0.15s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 14px 16px !important;
+  border-radius: var(--slp-radius-sm) !important;
+  font-weight: 600 !important;
+  font-size: 15px !important;
+  color: var(--slp-on-surface-v) !important;
+  text-decoration: none !important;
+  margin-bottom: 4px !important;
+  transition: all var(--slp-transition) !important;
 }
 
 .woocommerce-MyAccount-navigation ul li.is-active a,
 .woocommerce-MyAccount-navigation ul li a:hover {
-    background: #ede7f6 !important;
-    color: #6200EE !important;
+  background: var(--slp-container) !important;
+  color: var(--slp-primary) !important;
 }
 
-/* -------- STAR RATING -------- */
-.star-rating, .rating, .product-rating { color: #FFA726 !important; }
-
-/* -------- GLOBAL LINKS -------- */
-a { color: #6200EE !important; text-decoration: none !important; }
-a:hover { color: #7c3aed !important; }
-
-hr, .divider {
-    border-color: #f0eaf8 !important;
-    margin: 20px 0 !important;
+/* ──────── STAR RATING ──────── */
+.star-rating,
+.rating,
+.product-rating {
+  color: #FFA726 !important;
 }
 
-/* -------- CUSTOM SCROLLBAR -------- */
-::-webkit-scrollbar { width: 3px !important; height: 3px !important; }
-::-webkit-scrollbar-track { background: transparent !important; }
+/* ──────── GLOBAL LINKS ──────── */
+a {
+  color: var(--slp-primary) !important;
+  text-decoration: none !important;
+  transition: color var(--slp-transition) !important;
+}
+
+a:hover,
+a:focus {
+  color: var(--slp-primary-dk) !important;
+  text-decoration: none !important;
+}
+
+hr,
+.divider {
+  border-color: var(--slp-outline-var) !important;
+  margin: 16px 0 !important;
+}
+
+/* ──────── IMAGES ──────── */
+img {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+/* ──────── DROPDOWN MENUS ──────── */
+.dropdown-menu {
+  border-radius: var(--slp-radius-sm) !important;
+  border: 1px solid var(--slp-outline-var) !important;
+  box-shadow: var(--slp-shadow-3) !important;
+  padding: 8px 0 !important;
+  animation: slpDropIn .2s ease-out !important;
+}
+
+@keyframes slpDropIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.dropdown-menu > li > a {
+  padding: 10px 20px !important;
+  font-size: 14px !important;
+  transition: background var(--slp-transition) !important;
+}
+
+.dropdown-menu > li > a:hover {
+  background: var(--slp-container) !important;
+  color: var(--slp-primary) !important;
+}
+
+/* ──────── SCROLLBAR ──────── */
+::-webkit-scrollbar {
+  width: 4px !important;
+  height: 4px !important;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
 ::-webkit-scrollbar-thumb {
-    background: #6200EE !important;
-    border-radius: 3px !important;
+  background: var(--slp-primary-lt) !important;
+  border-radius: 4px !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--slp-primary) !important;
+}
+
+/* ──────── SELECTION ──────── */
+::selection {
+  background: rgba(98,0,238,.15) !important;
+  color: var(--slp-on-surface) !important;
+}
+
+/* ──────── SMOOTH TRANSITION FOR ALL INTERACTIVE ELEMENTS ──────── */
+a, button, .btn, input, select, textarea,
+.nav-tabs > li > a,
+.pagination > li > a,
+.panel,
+.card {
+  transition-timing-function: cubic-bezier(.4, 0, .2, 1) !important;
+}
+
+/* ──────── RANGE SLIDER (price filter) ──────── */
+input[type="range"] {
+  accent-color: var(--slp-primary) !important;
+  height: 6px !important;
+}
+
+/* ──────── RESPONSIVE ADJUSTMENTS ──────── */
+@media (max-width: 768px) {
+  .container { padding: 0 12px !important; }
+
+  /* Stack sidebars on mobile */
+  .col-md-3,
+  .col-sm-3 {
+    width: 50% !important;
+    float: left !important;
+  }
+
+  /* Product images smaller on mobile */
+  .col-sm-3 img,
+  .tab-pane img {
+    max-height: 140px !important;
+    padding: 8px !important;
+  }
+
+  h1 { font-size: 20px !important; }
+  h2 { font-size: 18px !important; }
+  h3 { font-size: 16px !important; }
+}
+
+@media (max-width: 480px) {
+  .col-md-3,
+  .col-sm-3 {
+    width: 50% !important;
+  }
 }

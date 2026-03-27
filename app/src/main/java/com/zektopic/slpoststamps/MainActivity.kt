@@ -149,6 +149,10 @@ class MainActivity : AppCompatActivity() {
                 binding.progressBar.visibility = View.VISIBLE
                 binding.errorView.visibility = View.GONE
                 binding.swipeRefreshLayout.visibility = View.VISIBLE
+
+                // Early CSS injection — prevents flash of unstyled content (FOUC).
+                // The CSS hides headers/footers and sets colours before the page renders.
+                injectAssetCss(view, "inject.css")
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -156,7 +160,7 @@ class MainActivity : AppCompatActivity() {
                 // Stop pull-to-refresh spinner
                 binding.swipeRefreshLayout.isRefreshing = false
 
-                // Inject CSS from assets/inject.css — keeps styles maintainable outside Kotlin
+                // Re-inject CSS to ensure it overrides any late-loaded site styles
                 injectAssetCss(view, "inject.css")
 
                 // Inject UX enhancements from assets/inject.js
