@@ -1,9 +1,11 @@
 package com.zektopic.slpoststamps
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.view.MenuItem
 import android.view.View
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -11,16 +13,16 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.GravityCompat
 import com.zektopic.slpoststamps.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    
-    // Core URLs and domains
     private val TARGET_URL = "https://stamps.slpost.gov.lk/"
-    private val TARGET_DOMAIN = "stamps.slpost.gov.lk"
+    private val TARGET_DOMAIN = "slpost.gov.lk" // Broader domain catch
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -29,14 +31,47 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Set Toolbar as Action Bar for the Drawer Sidebar toggle icon handling
+        setSupportActionBar(binding.toolbar)
+
+        setupDrawer()
         setupWebView()
-        setupBottomNavigation()
         setupSwipeRefresh()
         setupBackButtonHandler()
         setupRetryButton()
 
         // Load the initial URL into the WebWrapper
         binding.webView.loadUrl(TARGET_URL)
+    }
+
+    private fun setupDrawer() {
+        val toggle = ActionBarDrawerToggle(
+            this, binding.drawerLayout, binding.toolbar,
+            R.string.app_name, R.string.app_name
+        )
+        binding.drawerLayout.addDrawerListener(toggle)
+        toggle.syncState()
+
+        binding.navigationView.setNavigationItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.navigation_home -> {
+                    // Navigate to Home
+                    binding.webView.loadUrl(TARGET_URL)
+                }
+                R.id.navigation_shop -> {
+                    // Navigate to the categories hash or just the base url (which is the shop)
+                    binding.webView.loadUrl(TARGET_URL)
+                }
+                R.id.navigation_cart -> {
+                    // Navigate to cart URL or trigger the native view-cart icon via javascript
+                    val triggerCartJS = "document.querySelector('.view-cart-button')?.click();"
+                    binding.webView.evaluateJavascript(triggerCartJS, null)
+                }
+            }
+            // Close sidebar after tapping an item
+            binding.drawerLayout.closeDrawer(GravityCompat.START)
+            true
+        }
     }
 
     private fun setupWebView() {
@@ -47,6 +82,11 @@ class MainActivity : AppCompatActivity() {
             setSupportZoom(true)
             builtInZoomControls = true
             displayZoomControls = false // Hide the clunky native zoom buttons
+            
+            // Fix for Android blank white screens due to mixed external assets and APIs
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+            }
         }
 
         binding.webView.webViewClient = object : WebViewClient() {
@@ -54,15 +94,23 @@ class MainActivity : AppCompatActivity() {
                 val url = request?.url?.toString() ?: return false
                 val host = Uri.parse(url).host
                 
-                // Keep navigation inside the app domain, avoiding system browser kicks
-                return if (host != null && host.contains(TARGET_DOMAIN)) {
-                    false // By returning false, we let the WebView handle it internally
-                } else {
-                    true // returning true prevents the WebView from loading the external URL.
-                    // We can add intent forwarding here for external links if necessary:
-                    // val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                    // startActivity(intent)
+                if (url.startsWith("http://") || url.startsWith("https://")) {
+                    // Keep navigation inside the app domain safely, avoiding system browser kicks and bugs
+                    if (host != null && host.contains(TARGET_DOMAIN)) {
+                        return false // Let WebView handle it natively
+                    } else {
+                        // External links: pop them out safely via intents so we do not break internal routing or get stuck on white screens
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        startActivity(intent)
+                        return true
+                    }
                 }
+                return false
+            }
+
+            override fun onReceivedSslError(view: WebView?, handler: android.webkit.SslErrorHandler?, error: android.net.http.SslError?) {
+                // To avoid white screen completely if slpost's domain ssl cert is weakly configured or expired
+                handler?.proceed()
             }
 
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
@@ -78,8 +126,7 @@ class MainActivity : AppCompatActivity() {
                 // Stop pull-to-refresh spinner
                 binding.swipeRefreshLayout.isRefreshing = false
                 
-                // UI Modernization (CSS/JS Injection)
-                // Inject Custom CSS to hide web headers/footers and apply Material UI styles to auth pages
+                // Inject Custom CSS safely via single-line escaped strings to prevent Webkit Syntax breaking the screen
                 val materialCSS = """
                     #header, #footer { display: none !important; }
                     /* Material UI overrides for Auth Forms */
@@ -115,11 +162,11 @@ class MainActivity : AppCompatActivity() {
                     #terms-and-conditions-heading h4 { font-size: 14px !important; font-weight: bold !important; color: #424242 !important; }
                     label[for="remember_me"], label[for="agree"] { font-size: 14px !important; color: #616161 !important; font-weight: normal !important; margin-left: 8px !important; vertical-align: middle !important; }
                     input[type="checkbox"] { width: 18px !important; height: 18px !important; accent-color: #6200EE !important; vertical-align: middle !important; }
-                """.trimIndent()
+                """.trimIndent().replace("\n", " ").replace("\"", "\\\"")
 
                 val cssOverride = """
                     var style = document.createElement('style');
-                    style.innerHTML = `${materialCSS}`;
+                    style.innerHTML = "$materialCSS";
                     document.head.appendChild(style);
                 """.trimIndent()
                 
@@ -154,31 +201,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupBottomNavigation() {
-        binding.bottomNavigationView.setOnItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.navigation_home -> {
-                    // Navigate to Home
-                    binding.webView.loadUrl(TARGET_URL)
-                    true
-                }
-                R.id.navigation_shop -> {
-                    // Navigate to the categories hash or just the base url (which is the shop)
-                    binding.webView.loadUrl(TARGET_URL)
-                    true
-                }
-                R.id.navigation_cart -> {
-                    // Navigate to cart URL or trigger the native view-cart icon via javascript
-                    val triggerCartJS = "document.querySelector('.view-cart-button')?.click();"
-                    binding.webView.evaluateJavascript(triggerCartJS, null)
-                    // Fallback URL if JS isn't preferred: binding.webView.loadUrl("https://stamps.slpost.gov.lk/cart-view/")
-                    true
-                }
-                else -> false
-            }
-        }
-    }
-
     private fun setupSwipeRefresh() {
         // Standard pull-to-refresh
         binding.swipeRefreshLayout.setOnRefreshListener {
@@ -187,10 +209,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupBackButtonHandler() {
-        // Intercept native Back button to perform Web History back navigation
+        // Intercept native Back button
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (binding.webView.canGoBack()) {
+                if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                    // Close sidebar if open
+                    binding.drawerLayout.closeDrawer(GravityCompat.START)
+                } else if (binding.webView.canGoBack()) {
+                    // Perform Web History back navigation
                     binding.webView.goBack()
                 } else {
                     // Remove intercept, default system behavior
