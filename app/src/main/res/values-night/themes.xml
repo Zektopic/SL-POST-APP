@@ -9,7 +9,6 @@
         <item name="colorOnSecondary">@color/md_on_secondary_dark_theme</item>
         <item name="colorSecondaryContainer">@color/md_secondary_container_dark</item>
         <item name="colorOnSecondaryContainer">@color/md_on_secondary_container_dark</item>
-        <item name="colorBackground">@color/md_background_dark</item>
         <item name="android:colorBackground">@color/md_background_dark</item>
         <item name="colorSurface">@color/md_surface_dark</item>
         <item name="colorSurfaceVariant">@color/md_surface_variant_dark</item>

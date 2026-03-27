@@ -17,7 +17,6 @@
         <item name="colorTertiaryContainer">@color/md_tertiary_container</item>
         <item name="colorOnTertiaryContainer">@color/md_on_tertiary_container</item>
         <!-- Surface & Background -->
-        <item name="colorBackground">@color/md_background</item>
         <item name="android:colorBackground">@color/md_background</item>
         <item name="colorSurface">@color/md_surface</item>
         <item name="colorSurfaceVariant">@color/md_surface_variant</item>
