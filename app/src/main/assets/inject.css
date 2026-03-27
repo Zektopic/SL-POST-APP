@@ -1,39 +1,45 @@
 /* ================================================
-   SL POST STAMPS — MOBILE INJECTION STYLESHEET v2
-   Material Design 3 layer for Bootstrap 3 site.
-   Targets actual site selectors for smooth cohesion.
+   SL POST STAMPS — MOBILE INJECTION STYLESHEET v3
+   Crimson/Gold Sri Lankan Philately design system.
+   M3 layer over the Bootstrap 3 site.
    ================================================ */
 
 /* ──────── DESIGN TOKENS ──────── */
 :root {
-  --slp-primary:    #6200EE;
-  --slp-primary-dk: #3700B3;
-  --slp-primary-lt: #BB86FC;
+  --slp-primary:    #7C001A;
+  --slp-primary-c:  #A01A2C;
+  --slp-primary-lt: #FFB3B2;
   --slp-on-primary: #FFFFFF;
-  --slp-secondary:  #7965AF;
-  --slp-tertiary:   #B45309;
-  --slp-surface:    #FEFBFF;
-  --slp-surface-dim:#F5F0FA;
-  --slp-on-surface: #1C1B1F;
-  --slp-on-surface-v:#49454F;
-  --slp-outline:    #CAC4D0;
-  --slp-outline-var:#E7E0EC;
-  --slp-container:  #F3EDFA;
-  --slp-error:      #B3261E;
+  --slp-secondary:  #835400;
+  --slp-sec-container: #FEB959;
+  --slp-tertiary:   #003D66;
+  --slp-surface:    #FDF8F9;
+  --slp-surface-dim:#DDD9DA;
+  --slp-surface-c:  #F1EDEE;
+  --slp-surface-c-h:#EBE7E8;
+  --slp-surface-c-l:#F7F2F3;
+  --slp-surface-low:#FFFFFF;
+  --slp-on-surface: #1C1B1C;
+  --slp-on-surface-v:#594140;
+  --slp-outline:    #8D7070;
+  --slp-outline-var:#E1BEBE;
+  --slp-error:      #BA1A1A;
   --slp-success:    #2E7D32;
-  --slp-radius-sm:  10px;
-  --slp-radius-md:  16px;
+  --slp-radius-sm:  8px;
+  --slp-radius-md:  12px;
   --slp-radius-lg:  24px;
-  --slp-shadow-1:   0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
-  --slp-shadow-2:   0 4px 12px rgba(0,0,0,.08), 0 2px 4px rgba(0,0,0,.04);
-  --slp-shadow-3:   0 8px 24px rgba(0,0,0,.10), 0 4px 8px rgba(0,0,0,.06);
-  --slp-transition: .25s cubic-bezier(.4, 0, .2, 1);
+  --slp-radius-xl:  28px;
+  --slp-shadow-1:   0 1px 3px rgba(28,27,28,.06), 0 1px 2px rgba(28,27,28,.04);
+  --slp-shadow-2:   0 4px 20px rgba(28,27,28,.06);
+  --slp-shadow-3:   0 8px 24px rgba(28,27,28,.10);
+  --slp-ease:       cubic-bezier(.4, 0, .2, 1);
+  --slp-dur:        .25s;
 }
 
 /* ──────── BASE RESET ──────── */
 *, *::before, *::after {
   box-sizing: border-box !important;
-  -webkit-tap-highlight-color: rgba(98,0,238,.06) !important;
+  -webkit-tap-highlight-color: transparent !important;
 }
 
 html {
@@ -42,14 +48,14 @@ html {
 }
 
 body {
-  font-family: 'Segoe UI', Roboto, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif !important;
+  font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+               Roboto, 'Helvetica Neue', sans-serif !important;
   -webkit-font-smoothing: antialiased !important;
   background: var(--slp-surface) !important;
   color: var(--slp-on-surface) !important;
   overscroll-behavior: contain !important;
   line-height: 1.6 !important;
-  /* Prevent FOUC — content fades in after injection */
-  animation: slpFadeIn .4s ease-out both !important;
+  animation: slpFadeIn .35s var(--slp-ease) both !important;
 }
 
 @keyframes slpFadeIn {
@@ -58,8 +64,6 @@ body {
 }
 
 /* ──────── HIDE WEBSITE CHROME ──────── */
-/* Site header/nav replaced by native Toolbar + Drawer.
-   Exception: auth pages keep header (tagged via JS). */
 body:not(.slp-auth-page) #header,
 body:not(.slp-auth-page) header,
 body:not(.slp-auth-page) .header,
@@ -76,7 +80,6 @@ body:not(.slp-auth-page) .header-bottom {
   display: none !important;
 }
 
-/* Footer always hidden */
 footer, #footer, .footer, .site-footer, .main-footer,
 .footer-widgets, .footer-bottom,
 .back-to-top, .scroll-to-top, #back-to-top,
@@ -85,7 +88,10 @@ footer, #footer, .footer, .site-footer, .main-footer,
   display: none !important;
 }
 
-/* Remove spacing reserved for hidden header */
+body {
+  padding-top: 0 !important;
+}
+
 body > .page-wrapper,
 body > .wrapper,
 .main-content,
@@ -97,12 +103,7 @@ body > .container-fluid {
   margin-top: 0 !important;
 }
 
-/* Fix body top padding that websites set for fixed navbars */
-body {
-  padding-top: 0 !important;
-}
-
-/* ──────── LAYOUT & CONTAINER ──────── */
+/* ──────── LAYOUT ──────── */
 .container,
 .container-fluid {
   padding-left: 14px !important;
@@ -120,20 +121,20 @@ body {
   padding-right: 8px !important;
 }
 
-/* ──────── CART BAR (the blue "My cart" strip) ──────── */
+/* ──────── CART BAR (blue → crimson) ──────── */
 .btn-info,
 a.btn-info,
 .btn-info:hover,
 .btn-info:focus,
 .btn-info:active {
-  background: linear-gradient(135deg, var(--slp-primary) 0%, var(--slp-primary-dk) 100%) !important;
+  background: linear-gradient(135deg, var(--slp-primary) 0%, var(--slp-primary-c) 100%) !important;
   border: none !important;
   border-radius: var(--slp-radius-lg) !important;
   color: var(--slp-on-primary) !important;
   font-weight: 600 !important;
   letter-spacing: .3px !important;
   box-shadow: var(--slp-shadow-1) !important;
-  transition: all var(--slp-transition) !important;
+  transition: all var(--slp-dur) var(--slp-ease) !important;
   padding: 10px 20px !important;
 }
 
@@ -142,21 +143,21 @@ a.btn-info,
   border: 1px solid var(--slp-outline-var) !important;
   border-radius: var(--slp-radius-md) !important;
   box-shadow: var(--slp-shadow-1) !important;
-  background: #fff !important;
+  background: var(--slp-surface-low) !important;
   overflow: hidden !important;
   margin-bottom: 16px !important;
-  transition: box-shadow var(--slp-transition) !important;
+  transition: box-shadow var(--slp-dur) var(--slp-ease) !important;
 }
 
 .panel-heading,
 .panel-default > .panel-heading {
-  background: var(--slp-container) !important;
+  background: var(--slp-surface-c-h) !important;
   color: var(--slp-primary) !important;
   border-bottom: 1px solid var(--slp-outline-var) !important;
   font-weight: 700 !important;
-  font-size: 14px !important;
+  font-size: 12px !important;
   padding: 14px 16px !important;
-  letter-spacing: .3px !important;
+  letter-spacing: .8px !important;
   text-transform: uppercase !important;
   border-radius: var(--slp-radius-md) var(--slp-radius-md) 0 0 !important;
 }
@@ -165,22 +166,19 @@ a.btn-info,
   padding: 16px !important;
 }
 
-/* ──────── CATEGORY TABS (STAMPS / MINIATURE SHEETS / etc.) ──────── */
+/* ──────── CATEGORY TABS ──────── */
 .nav-tabs {
-  border-bottom: 2px solid var(--slp-outline-var) !important;
+  border-bottom: none !important;
   display: flex !important;
   flex-wrap: nowrap !important;
   overflow-x: auto !important;
   scrollbar-width: none !important;
-  -ms-overflow-style: none !important;
-  gap: 4px !important;
-  padding: 4px 0 !important;
+  gap: 6px !important;
+  padding: 6px 0 !important;
   background: transparent !important;
 }
 
-.nav-tabs::-webkit-scrollbar {
-  display: none !important;
-}
+.nav-tabs::-webkit-scrollbar { display: none !important; }
 
 .nav-tabs > li {
   float: none !important;
@@ -189,21 +187,21 @@ a.btn-info,
 
 .nav-tabs > li > a {
   border: none !important;
-  border-radius: var(--slp-radius-lg) !important;
-  padding: 10px 20px !important;
+  border-radius: 9999px !important;
+  padding: 10px 22px !important;
   font-size: 13px !important;
-  font-weight: 600 !important;
+  font-weight: 500 !important;
   white-space: nowrap !important;
-  color: var(--slp-on-surface-v) !important;
-  background: transparent !important;
-  transition: all var(--slp-transition) !important;
+  color: var(--slp-on-surface) !important;
+  background: var(--slp-surface-c-h) !important;
+  transition: all var(--slp-dur) var(--slp-ease) !important;
   margin: 0 !important;
   text-decoration: none !important;
 }
 
 .nav-tabs > li > a:hover,
 .nav-tabs > li > a:focus {
-  background: var(--slp-container) !important;
+  background: var(--slp-outline-var) !important;
   color: var(--slp-primary) !important;
   border: none !important;
 }
@@ -214,19 +212,11 @@ a.btn-info,
   background: var(--slp-primary) !important;
   color: var(--slp-on-primary) !important;
   border: none !important;
-  border-radius: var(--slp-radius-lg) !important;
-  box-shadow: 0 2px 8px rgba(98,0,238,.25) !important;
-}
-
-/* Dark tab bar background → match surface */
-.tab-bar,
-.nav-tabs-container,
-.tab-content > .active {
-  background: transparent !important;
+  border-radius: 9999px !important;
+  font-weight: 600 !important;
 }
 
 /* ──────── PRODUCT CARDS ──────── */
-/* Target the actual site structure: each product is in a col-sm-3 div */
 .product-item,
 .product-card,
 .stamp-item,
@@ -238,10 +228,10 @@ ul.products li.product,
   border-radius: var(--slp-radius-md) !important;
   overflow: hidden !important;
   box-shadow: var(--slp-shadow-1) !important;
-  border: 1px solid var(--slp-outline-var) !important;
-  background: #ffffff !important;
-  transition: transform var(--slp-transition),
-              box-shadow var(--slp-transition) !important;
+  border: none !important;
+  background: var(--slp-surface-low) !important;
+  transition: transform var(--slp-dur) var(--slp-ease),
+              box-shadow var(--slp-dur) var(--slp-ease) !important;
   margin-bottom: 16px !important;
 }
 
@@ -250,7 +240,6 @@ ul.products li.product,
 ul.products li.product:active,
 .col-sm-3 > div:active {
   transform: scale(0.975) !important;
-  box-shadow: var(--slp-shadow-1) !important;
 }
 
 /* Product images */
@@ -265,24 +254,23 @@ ul.products li.product img,
   max-height: 200px !important;
   object-fit: contain !important;
   display: block !important;
-  padding: 12px !important;
-  background: #FAFAFA !important;
-  transition: transform .3s ease !important;
+  padding: 16px !important;
+  background: var(--slp-surface-c-l) !important;
+  transition: transform .3s var(--slp-ease) !important;
 }
 
-/* Category label above each product (e.g., "STAMPS (PHILATELIC)") */
+/* Category label (e.g., "STAMPS (PHILATELIC)") */
 .item-type,
 label.item-type {
   display: inline-block !important;
-  background: var(--slp-container) !important;
-  color: var(--slp-primary) !important;
+  background: transparent !important;
+  color: var(--slp-secondary) !important;
   font-size: 10px !important;
   font-weight: 700 !important;
-  letter-spacing: .8px !important;
+  letter-spacing: 1px !important;
   text-transform: uppercase !important;
-  padding: 4px 10px !important;
-  border-radius: 20px !important;
-  margin: 10px 12px 6px !important;
+  padding: 6px 12px 2px !important;
+  margin: 0 !important;
 }
 
 /* Product title */
@@ -295,44 +283,31 @@ ul.products li.product .woocommerce-loop-product__title,
   font-weight: 600 !important;
   color: var(--slp-on-surface) !important;
   text-decoration: none !important;
-  line-height: 1.4 !important;
+  line-height: 1.35 !important;
   display: block !important;
-  padding: 4px 12px !important;
+  padding: 2px 12px !important;
 }
 
 /* ──────── PRICES ──────── */
-.price,
-.product-price,
-.woocommerce-Price-amount,
-ins .woocommerce-Price-amount,
-b, strong {
-  color: var(--slp-primary) !important;
-  font-weight: 700 !important;
-  font-size: 16px !important;
-  padding: 6px 12px !important;
-  display: block !important;
-}
-
-/* Only apply to price-context bold text, not ALL bold */
 .tab-pane b,
 .tab-pane strong,
 .col-sm-3 b,
 .col-sm-3 strong {
   color: var(--slp-primary) !important;
   font-weight: 700 !important;
-  font-size: 16px !important;
+  font-size: 15px !important;
 }
 
 del .woocommerce-Price-amount,
 .original-price,
 .old-price {
-  color: #9e9e9e !important;
+  color: var(--slp-outline) !important;
   font-size: 13px !important;
   font-weight: 400 !important;
   text-decoration: line-through !important;
 }
 
-/* ──────── BUTTONS — PRIMARY (Add to Cart) ──────── */
+/* ──────── BUTTONS — Add to Cart ──────── */
 .btn-success,
 .btn-success:hover,
 .btn-success:focus,
@@ -341,51 +316,52 @@ del .woocommerce-Price-amount,
 .add-to-cart,
 .add_to_cart_button,
 .single_add_to_cart_button {
-  background: linear-gradient(135deg, var(--slp-primary) 0%, #7c3aed 100%) !important;
-  color: var(--slp-on-primary) !important;
-  border: none !important;
+  background: transparent !important;
+  color: var(--slp-primary) !important;
+  border: 1px solid var(--slp-outline-var) !important;
   border-radius: var(--slp-radius-sm) !important;
-  padding: 11px 20px !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  letter-spacing: .4px !important;
-  box-shadow: 0 2px 8px rgba(98,0,238,.2) !important;
-  transition: all var(--slp-transition) !important;
+  padding: 10px 16px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  letter-spacing: .3px !important;
+  box-shadow: none !important;
+  transition: all var(--slp-dur) var(--slp-ease) !important;
   text-transform: none !important;
   cursor: pointer !important;
   display: block !important;
   text-align: center !important;
   -webkit-appearance: none !important;
   appearance: none !important;
-  margin: 8px 12px 14px !important;
+  margin: 6px 12px 14px !important;
   width: calc(100% - 24px) !important;
 }
 
 .btn-success:active,
 .add_to_cart_button:active {
   transform: scale(0.96) !important;
-  box-shadow: 0 1px 4px rgba(98,0,238,.15) !important;
+  background: var(--slp-primary) !important;
+  color: var(--slp-on-primary) !important;
+  border-color: var(--slp-primary) !important;
 }
 
-/* ──────── BUTTONS — PRIMARY GENERAL ──────── */
+/* ──────── BUTTONS — Primary ──────── */
 .btn-primary,
 .button,
 input[type="submit"],
-input[type="button"],
 .checkout-button,
 .wc-proceed-to-checkout a,
 #login-btn,
 input.button.raised.blue {
-  background: linear-gradient(135deg, var(--slp-primary) 0%, #7c3aed 100%) !important;
+  background: linear-gradient(135deg, var(--slp-primary) 0%, var(--slp-primary-c) 100%) !important;
   color: var(--slp-on-primary) !important;
   border: none !important;
-  border-radius: var(--slp-radius-lg) !important;
-  padding: 13px 28px !important;
+  border-radius: var(--slp-radius-md) !important;
+  padding: 14px 28px !important;
   font-size: 15px !important;
-  font-weight: 600 !important;
-  letter-spacing: .4px !important;
-  box-shadow: 0 4px 14px rgba(98,0,238,.28) !important;
-  transition: all var(--slp-transition) !important;
+  font-weight: 700 !important;
+  letter-spacing: .3px !important;
+  box-shadow: 0 4px 14px rgba(124,0,26,.2) !important;
+  transition: all var(--slp-dur) var(--slp-ease) !important;
   text-transform: none !important;
   cursor: pointer !important;
   display: inline-block !important;
@@ -398,29 +374,28 @@ input.button.raised.blue {
 .button:active,
 input[type="submit"]:active {
   transform: scale(0.97) !important;
-  box-shadow: 0 2px 8px rgba(98,0,238,.2) !important;
+  box-shadow: 0 2px 8px rgba(124,0,26,.15) !important;
 }
 
-/* ──────── BUTTONS — SECONDARY ──────── */
+/* ──────── BUTTONS — Secondary (Default) ──────── */
 .btn-default,
 .btn-secondary,
 .btn-outline-primary,
 button.alt {
   background: transparent !important;
   color: var(--slp-primary) !important;
-  border: 2px solid var(--slp-primary) !important;
-  border-radius: var(--slp-radius-lg) !important;
+  border: 1px solid var(--slp-outline-var) !important;
+  border-radius: var(--slp-radius-md) !important;
   padding: 11px 24px !important;
   font-weight: 600 !important;
-  transition: all var(--slp-transition) !important;
+  transition: all var(--slp-dur) var(--slp-ease) !important;
 }
 
 .btn-default:hover,
 .btn-default:focus,
 .btn-default:active {
-  background: var(--slp-container) !important;
+  background: var(--slp-surface-c-l) !important;
   color: var(--slp-primary) !important;
-  border-color: var(--slp-primary) !important;
 }
 
 /* ──────── FORM INPUTS ──────── */
@@ -433,14 +408,13 @@ input[type="search"],
 textarea,
 select,
 .form-control {
-  border: 1.5px solid var(--slp-outline) !important;
-  border-radius: var(--slp-radius-sm) !important;
-  padding: 12px 16px !important;
+  border: none !important;
+  border-radius: var(--slp-radius-md) !important;
+  padding: 14px 18px !important;
   font-size: 15px !important;
   color: var(--slp-on-surface) !important;
-  background: #fff !important;
-  transition: border-color var(--slp-transition),
-              box-shadow var(--slp-transition) !important;
+  background: var(--slp-surface-c-h) !important;
+  transition: all var(--slp-dur) var(--slp-ease) !important;
   outline: none !important;
   width: 100% !important;
   margin-bottom: 12px !important;
@@ -452,35 +426,38 @@ input:focus,
 textarea:focus,
 select:focus,
 .form-control:focus {
-  border-color: var(--slp-primary) !important;
-  box-shadow: 0 0 0 3px rgba(98,0,238,.10) !important;
-  background: #fff !important;
+  box-shadow: 0 0 0 2px var(--slp-secondary) !important;
+  background: var(--slp-surface-c-h) !important;
 }
 
 label,
 .form-label,
 .control-label {
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  color: var(--slp-on-surface-v) !important;
-  margin-bottom: 6px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: var(--slp-secondary) !important;
+  margin-bottom: 4px !important;
+  margin-left: 4px !important;
   display: block !important;
+  letter-spacing: .6px !important;
+  text-transform: uppercase !important;
 }
 
 /* ──────── CHECKBOXES & RADIO ──────── */
 input[type="checkbox"],
 input[type="radio"] {
-  width: 18px !important;
-  height: 18px !important;
+  width: 20px !important;
+  height: 20px !important;
   accent-color: var(--slp-primary) !important;
   cursor: pointer !important;
   margin-right: 8px !important;
   vertical-align: middle !important;
+  border-radius: 4px !important;
 }
 
-/* ──────── LOGIN / REGISTER PAGES ──────── */
+/* ──────── AUTH PAGES ──────── */
 body.slp-auth-page .navbar {
-  background: linear-gradient(135deg, var(--slp-primary) 0%, var(--slp-primary-dk) 100%) !important;
+  background: linear-gradient(135deg, var(--slp-primary) 0%, var(--slp-primary-c) 100%) !important;
   border: none !important;
   box-shadow: var(--slp-shadow-2) !important;
 }
@@ -490,29 +467,26 @@ body.slp-auth-page .navbar-brand {
   color: var(--slp-on-primary) !important;
 }
 
-#loginModal .modal-content,
-#registetModal .modal-content,
-.modal-content.boxshadownone,
 .modal-content {
   border-radius: var(--slp-radius-lg) !important;
   border: none !important;
-  box-shadow: var(--slp-shadow-3) !important;
-  padding: 24px !important;
+  box-shadow: var(--slp-shadow-2) !important;
+  padding: 28px !important;
   margin: 16px auto !important;
-  background: #fff !important;
+  background: var(--slp-surface-low) !important;
 }
 
 .modal-header {
   border-bottom: none !important;
   text-align: center !important;
   padding: 0 0 16px !important;
-  justify-content: center !important;
 }
 
 .modal-title {
-  font-weight: 700 !important;
+  font-weight: 800 !important;
   color: var(--slp-on-surface) !important;
-  font-size: 22px !important;
+  font-size: 24px !important;
+  letter-spacing: -.02em !important;
 }
 
 .modal-footer {
@@ -520,26 +494,12 @@ body.slp-auth-page .navbar-brand {
   justify-content: center !important;
 }
 
-.register-now,
-.have-account {
-  text-align: center !important;
-  font-size: 14px !important;
-  margin-top: 10px !important;
-  color: var(--slp-on-surface-v) !important;
-}
-
-.register-now a,
-.have-account a {
-  color: var(--slp-primary) !important;
-  font-weight: 700 !important;
-}
-
 /* ──────── HEADINGS ──────── */
 h1, h2, h3, h4, h5 {
   font-weight: 700 !important;
   color: var(--slp-on-surface) !important;
-  letter-spacing: -.2px !important;
-  line-height: 1.3 !important;
+  letter-spacing: -.02em !important;
+  line-height: 1.25 !important;
 }
 
 h1 { font-size: 24px !important; }
@@ -550,63 +510,17 @@ h3 { font-size: 17px !important; }
 .category-title,
 h2.title {
   position: relative !important;
-  padding-bottom: 12px !important;
-  margin-bottom: 18px !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 16px !important;
 }
 
-.section-title::after {
-  content: '' !important;
-  position: absolute !important;
-  bottom: 0 !important;
-  left: 0 !important;
-  width: 36px !important;
-  height: 3px !important;
-  background: var(--slp-primary) !important;
-  border-radius: 3px !important;
-}
-
-/* ──────── CART & CHECKOUT ──────── */
-.cart-table td,
-.woocommerce-cart-form table td,
-.woocommerce-checkout-review-order-table td,
-.order-summary td,
-table td {
-  padding: 12px 10px !important;
-  border-bottom: 1px solid var(--slp-outline-var) !important;
-  vertical-align: middle !important;
-  font-size: 14px !important;
-  transition: background var(--slp-transition) !important;
-}
-
-.cart-table th,
-.woocommerce-cart-form table th,
-table th {
-  font-size: 12px !important;
-  text-transform: uppercase !important;
-  letter-spacing: .6px !important;
-  color: var(--slp-on-surface-v) !important;
-  font-weight: 700 !important;
-  border-bottom: 2px solid var(--slp-outline-var) !important;
-  padding: 10px !important;
-  background: var(--slp-container) !important;
-}
-
-.cart_totals h2,
-.order-total td strong {
-  color: var(--slp-primary) !important;
-  font-size: 18px !important;
-}
-
-/* ──────── DATA TABLES ──────── */
-table.dataTable,
-.data-table,
-.order-table,
-.account-table,
+/* ──────── TABLES ──────── */
+table,
 .table {
   border-radius: var(--slp-radius-md) !important;
   overflow: hidden !important;
   box-shadow: var(--slp-shadow-1) !important;
-  border: 1px solid var(--slp-outline-var) !important;
+  border: none !important;
   border-collapse: separate !important;
   border-spacing: 0 !important;
   width: 100% !important;
@@ -616,61 +530,51 @@ table thead th {
   background: var(--slp-primary) !important;
   color: var(--slp-on-primary) !important;
   font-weight: 600 !important;
-  font-size: 12px !important;
-  letter-spacing: .4px !important;
+  font-size: 11px !important;
+  letter-spacing: .6px !important;
+  text-transform: uppercase !important;
   border: none !important;
-  padding: 12px 14px !important;
+  padding: 14px 16px !important;
 }
 
 table tbody tr:nth-child(even) td {
-  background: var(--slp-surface-dim) !important;
-}
-
-table tbody tr {
-  transition: background var(--slp-transition) !important;
+  background: var(--slp-surface-c-l) !important;
 }
 
 table tbody td {
-  padding: 12px 14px !important;
+  padding: 12px 16px !important;
   border-bottom: 1px solid var(--slp-outline-var) !important;
   font-size: 14px !important;
   color: var(--slp-on-surface-v) !important;
 }
 
-/* ──────── ALERTS / NOTICES ──────── */
+/* ──────── ALERTS ──────── */
 .alert,
-.notice,
-.woocommerce-message,
-.woocommerce-error,
-.woocommerce-info,
-.notification {
-  border-radius: var(--slp-radius-sm) !important;
+.notice {
+  border-radius: var(--slp-radius-md) !important;
   border: none !important;
-  border-left: 4px solid var(--slp-primary) !important;
-  background: var(--slp-container) !important;
   padding: 14px 18px !important;
   margin-bottom: 14px !important;
   font-size: 14px !important;
-  transition: opacity var(--slp-transition) !important;
 }
 
-.alert-danger,
-.woocommerce-error {
-  border-left-color: var(--slp-error) !important;
+.alert-danger {
   background: #FFF0EE !important;
   color: var(--slp-error) !important;
 }
 
-.alert-success,
-.woocommerce-message {
-  border-left-color: var(--slp-success) !important;
+.alert-success {
   background: #EDF7ED !important;
   color: var(--slp-success) !important;
 }
 
 .alert-info {
-  border-left-color: var(--slp-secondary) !important;
-  background: #F0ECFA !important;
+  background: #E8F4FD !important;
+  color: var(--slp-tertiary) !important;
+}
+
+.alert-warning {
+  background: #FFF8E6 !important;
   color: var(--slp-secondary) !important;
 }
 
@@ -678,49 +582,31 @@ table tbody td {
 .card,
 .box,
 .widget,
-.account-card,
 .well {
   border-radius: var(--slp-radius-md) !important;
-  border: 1px solid var(--slp-outline-var) !important;
+  border: none !important;
   box-shadow: var(--slp-shadow-1) !important;
   overflow: hidden !important;
-  background: #fff !important;
-  transition: box-shadow var(--slp-transition) !important;
+  background: var(--slp-surface-low) !important;
 }
 
-.card-header,
-.panel-heading {
-  background: var(--slp-container) !important;
-  border-bottom: 1px solid var(--slp-outline-var) !important;
-  font-weight: 700 !important;
-  font-size: 15px !important;
-  color: var(--slp-on-surface) !important;
-  padding: 14px 16px !important;
-}
-
-.card-body,
-.panel-body {
-  padding: 16px !important;
-}
-
-/* ──────── BADGES & CHIPS ──────── */
+/* ──────── BADGES ──────── */
 .badge,
 .label,
 .tag,
 .chip {
-  border-radius: 20px !important;
-  font-size: 11px !important;
+  border-radius: 9999px !important;
+  font-size: 10px !important;
   font-weight: 700 !important;
   padding: 4px 10px !important;
-  letter-spacing: .3px !important;
+  letter-spacing: .5px !important;
+  text-transform: uppercase !important;
 }
 
-.badge-primary,
-.badge-info,
 .label-primary,
-.label-info {
-  background: var(--slp-container) !important;
-  color: var(--slp-primary) !important;
+.badge-primary {
+  background: var(--slp-primary) !important;
+  color: var(--slp-on-primary) !important;
 }
 
 .label-success,
@@ -729,153 +615,47 @@ table tbody td {
   color: var(--slp-success) !important;
 }
 
-.label-danger,
-.badge-danger {
-  background: #FFF0EE !important;
-  color: var(--slp-error) !important;
-}
-
 .label-warning,
 .badge-warning {
-  background: #FFF8E6 !important;
-  color: var(--slp-tertiary) !important;
+  background: var(--slp-sec-container) !important;
+  color: var(--slp-secondary) !important;
 }
 
-/* ──────── TERMS BOX ──────── */
-.terms-and-conditions .dec-section,
-.terms-content {
-  border-radius: var(--slp-radius-sm) !important;
-  border: 1px solid var(--slp-outline-var) !important;
-  background: var(--slp-surface-dim) !important;
-  padding: 14px !important;
-  margin-bottom: 16px !important;
-  font-size: 13px !important;
-  color: var(--slp-on-surface-v) !important;
-  max-height: 120px !important;
-  overflow-y: auto !important;
+.label-info,
+.badge-info {
+  background: #E8F4FD !important;
+  color: var(--slp-tertiary) !important;
 }
 
 /* ──────── PAGINATION ──────── */
 .pagination > li > a,
 .pagination > li > span {
   border-radius: var(--slp-radius-sm) !important;
-  border: 1.5px solid var(--slp-outline) !important;
-  color: var(--slp-primary) !important;
+  border: 1px solid var(--slp-outline-var) !important;
+  color: var(--slp-on-surface) !important;
   margin: 0 3px !important;
   padding: 8px 14px !important;
   font-weight: 600 !important;
-  transition: all var(--slp-transition) !important;
-  background: #fff !important;
+  transition: all var(--slp-dur) var(--slp-ease) !important;
+  background: var(--slp-surface-low) !important;
 }
 
 .pagination > .active > a,
-.pagination > .active > span,
-.pagination > .active > a:hover {
+.pagination > .active > span {
   background: var(--slp-primary) !important;
   border-color: var(--slp-primary) !important;
   color: var(--slp-on-primary) !important;
 }
 
-.pagination > li > a:hover {
-  background: var(--slp-container) !important;
-  border-color: var(--slp-primary) !important;
-}
-
-/* ──────── SEARCH BAR ──────── */
-.search-form,
-.search-bar,
-.search-box {
-  border-radius: var(--slp-radius-lg) !important;
-  overflow: hidden !important;
-}
-
-input[type="search"] {
-  border-radius: var(--slp-radius-lg) !important;
-  border: 1.5px solid var(--slp-outline) !important;
-  padding: 12px 20px !important;
-  background: #fff !important;
-}
-
-input[type="search"]:focus {
-  border-color: var(--slp-primary) !important;
-  box-shadow: 0 0 0 3px rgba(98,0,238,.10) !important;
-}
-
-/* ──────── QUANTITY INPUT ──────── */
-input.qty,
-.quantity input {
-  border-radius: var(--slp-radius-sm) !important;
-  border: 1.5px solid var(--slp-outline) !important;
-  padding: 8px 12px !important;
-  font-size: 16px !important;
-  font-weight: 600 !important;
-  text-align: center !important;
-  width: 70px !important;
-  color: var(--slp-on-surface) !important;
-}
-
-/* ──────── PRODUCT DETAIL PAGE ──────── */
-.product_title,
-.entry-title,
-.product-single-title {
-  font-size: 22px !important;
-  font-weight: 700 !important;
-  color: var(--slp-on-surface) !important;
-  margin-bottom: 8px !important;
-  line-height: 1.3 !important;
-}
-
-.woocommerce-product-details__short-description,
-.product-description {
-  font-size: 14px !important;
-  color: var(--slp-on-surface-v) !important;
-  line-height: 1.7 !important;
-  margin-bottom: 16px !important;
-}
-
-/* ──────── MY ACCOUNT ──────── */
-.woocommerce-MyAccount-navigation ul {
-  list-style: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
-
-.woocommerce-MyAccount-navigation ul li a {
-  display: flex !important;
-  align-items: center !important;
-  padding: 14px 16px !important;
-  border-radius: var(--slp-radius-sm) !important;
-  font-weight: 600 !important;
-  font-size: 15px !important;
-  color: var(--slp-on-surface-v) !important;
-  text-decoration: none !important;
-  margin-bottom: 4px !important;
-  transition: all var(--slp-transition) !important;
-}
-
-.woocommerce-MyAccount-navigation ul li.is-active a,
-.woocommerce-MyAccount-navigation ul li a:hover {
-  background: var(--slp-container) !important;
-  color: var(--slp-primary) !important;
-}
-
-/* ──────── STAR RATING ──────── */
-.star-rating,
-.rating,
-.product-rating {
-  color: #FFA726 !important;
-}
-
-/* ──────── GLOBAL LINKS ──────── */
+/* ──────── LINKS ──────── */
 a {
   color: var(--slp-primary) !important;
   text-decoration: none !important;
-  transition: color var(--slp-transition) !important;
+  transition: color var(--slp-dur) var(--slp-ease) !important;
 }
 
-a:hover,
-a:focus {
-  color: var(--slp-primary-dk) !important;
+a:hover {
+  color: var(--slp-primary-c) !important;
   text-decoration: none !important;
 }
 
@@ -891,92 +671,72 @@ img {
   height: auto !important;
 }
 
-/* ──────── DROPDOWN MENUS ──────── */
+/* ──────── DROPDOWN ──────── */
 .dropdown-menu {
-  border-radius: var(--slp-radius-sm) !important;
-  border: 1px solid var(--slp-outline-var) !important;
+  border-radius: var(--slp-radius-md) !important;
+  border: none !important;
   box-shadow: var(--slp-shadow-3) !important;
   padding: 8px 0 !important;
-  animation: slpDropIn .2s ease-out !important;
+  animation: slpDropIn .2s var(--slp-ease) !important;
+  background: var(--slp-surface-low) !important;
 }
 
 @keyframes slpDropIn {
-  from { opacity: 0; transform: translateY(-8px); }
+  from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 .dropdown-menu > li > a {
   padding: 10px 20px !important;
   font-size: 14px !important;
-  transition: background var(--slp-transition) !important;
+  transition: background var(--slp-dur) var(--slp-ease) !important;
 }
 
 .dropdown-menu > li > a:hover {
-  background: var(--slp-container) !important;
+  background: var(--slp-surface-c-l) !important;
   color: var(--slp-primary) !important;
 }
 
 /* ──────── SCROLLBAR ──────── */
-::-webkit-scrollbar {
-  width: 4px !important;
-  height: 4px !important;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent !important;
-}
-
+::-webkit-scrollbar { width: 4px !important; height: 4px !important; }
+::-webkit-scrollbar-track { background: transparent !important; }
 ::-webkit-scrollbar-thumb {
-  background: var(--slp-primary-lt) !important;
+  background: var(--slp-outline-var) !important;
   border-radius: 4px !important;
 }
-
 ::-webkit-scrollbar-thumb:hover {
   background: var(--slp-primary) !important;
 }
 
 /* ──────── SELECTION ──────── */
 ::selection {
-  background: rgba(98,0,238,.15) !important;
+  background: var(--slp-primary-lt) !important;
   color: var(--slp-on-surface) !important;
 }
 
-/* ──────── SMOOTH TRANSITION FOR ALL INTERACTIVE ELEMENTS ──────── */
-a, button, .btn, input, select, textarea,
-.nav-tabs > li > a,
-.pagination > li > a,
-.panel,
-.card {
-  transition-timing-function: cubic-bezier(.4, 0, .2, 1) !important;
-}
-
-/* ──────── RANGE SLIDER (price filter) ──────── */
+/* ──────── RANGE SLIDER ──────── */
 input[type="range"] {
   accent-color: var(--slp-primary) !important;
-  height: 6px !important;
 }
 
-/* ──────── RESPONSIVE ADJUSTMENTS ──────── */
+/* ──────── RESPONSIVE ──────── */
 @media (max-width: 768px) {
   .container { padding: 0 12px !important; }
 
-  /* Stack sidebars on mobile */
   .col-md-3,
   .col-sm-3 {
     width: 50% !important;
     float: left !important;
   }
 
-  /* Product images smaller on mobile */
   .col-sm-3 img,
   .tab-pane img {
     max-height: 140px !important;
-    padding: 8px !important;
+    padding: 12px !important;
   }
 
   h1 { font-size: 20px !important; }
   h2 { font-size: 18px !important; }
-  h3 { font-size: 16px !important; }
 }
 
 @media (max-width: 480px) {
@@ -987,8 +747,13 @@ input[type="range"] {
 }
 
 /* ──────── NATIVE APP FAB CLEARANCE ──────── */
-/* Prevents the bottom of page content from being hidden under the cart FAB.
-   FAB height 56dp + bottom margin 20dp + breathing room = ~96px */
 body {
   padding-bottom: 96px !important;
+}
+
+/* ──────── STAR RATING ──────── */
+.star-rating,
+.rating,
+.product-rating {
+  color: #FFA726 !important;
 }

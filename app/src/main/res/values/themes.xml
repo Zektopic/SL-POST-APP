@@ -1,17 +1,17 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
 
     <style name="Base.Theme.SLPOSTSTAMPS" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Primary brand colour -->
+        <!-- Primary — Sri Lanka Post Crimson -->
         <item name="colorPrimary">@color/md_primary</item>
         <item name="colorOnPrimary">@color/md_on_primary</item>
         <item name="colorPrimaryContainer">@color/md_primary_container</item>
         <item name="colorOnPrimaryContainer">@color/md_on_primary_container</item>
-        <!-- Secondary -->
+        <!-- Secondary — Heritage Gold -->
         <item name="colorSecondary">@color/md_secondary</item>
         <item name="colorOnSecondary">@color/md_on_secondary</item>
         <item name="colorSecondaryContainer">@color/md_secondary_container</item>
         <item name="colorOnSecondaryContainer">@color/md_on_secondary_container</item>
-        <!-- Tertiary -->
+        <!-- Tertiary — Archive Teal -->
         <item name="colorTertiary">@color/md_tertiary</item>
         <item name="colorOnTertiary">@color/md_on_tertiary</item>
         <item name="colorTertiaryContainer">@color/md_tertiary_container</item>
@@ -31,7 +31,7 @@
         <item name="colorErrorContainer">@color/md_error_container</item>
         <item name="colorOnError">@color/md_on_error</item>
         <item name="colorOnErrorContainer">@color/md_on_error_container</item>
-        <!-- Shape: slightly more rounded than M3 defaults -->
+        <!-- Shape -->
         <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.SLP.Small</item>
         <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.SLP.Medium</item>
         <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.SLP.Large</item>
@@ -41,10 +41,10 @@
 
     <!-- ── Shape overrides ── -->
     <style name="ShapeAppearance.SLP.Small" parent="ShapeAppearance.Material3.SmallComponent">
-        <item name="cornerSize">10dp</item>
+        <item name="cornerSize">8dp</item>
     </style>
     <style name="ShapeAppearance.SLP.Medium" parent="ShapeAppearance.Material3.MediumComponent">
-        <item name="cornerSize">16dp</item>
+        <item name="cornerSize">12dp</item>
     </style>
     <style name="ShapeAppearance.SLP.Large" parent="ShapeAppearance.Material3.LargeComponent">
         <item name="cornerSize">24dp</item>
@@ -52,13 +52,17 @@
 
     <!-- ── Toolbar typography ── -->
     <style name="SLP.Toolbar.Title" parent="TextAppearance.Material3.TitleLarge">
-        <item name="android:textColor">@color/md_on_primary</item>
-        <item name="android:textSize">18sp</item>
-        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">@color/md_primary</item>
+        <item name="android:textSize">20sp</item>
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:letterSpacing">-0.02</item>
     </style>
     <style name="SLP.Toolbar.Subtitle" parent="TextAppearance.Material3.LabelMedium">
-        <item name="android:textColor">#B3FFFFFF</item>
-        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/md_on_surface_variant</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:letterSpacing">0.06</item>
+        <item name="android:textAllCaps">true</item>
     </style>
 
 </resources>

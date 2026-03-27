@@ -1,5 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Dark-theme colour overrides — generated from #6200EE source colour -->
+    <!-- Dark-theme colour overrides — crimson source colour -->
     <style name="Base.Theme.SLPOSTSTAMPS" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/md_primary_dark_theme</item>
         <item name="colorOnPrimary">@color/md_on_primary_dark_theme</item>

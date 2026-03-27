@@ -117,7 +117,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupWebView() {
         // ── Match WebView background to the app surface colour ──
         // This eliminates the jarring white flash between page navigations because
-        // the WebView canvas colour matches the injected CSS body background (#FEFBFF).
+        // the WebView canvas colour matches the injected CSS body background (#FDF8F9).
         binding.webView.setBackgroundColor(ContextCompat.getColor(this, R.color.md_background))
 
         // Disable the default Android overscroll glow/bounce so the WebView feels native.
@@ -230,7 +230,7 @@ class MainActivity : AppCompatActivity() {
                 val url = view?.url ?: ""
                 val isHome = url.trimEnd('/') == TARGET_URL.trimEnd('/')
                 val subtitle = when {
-                    isHome || title.isNullOrBlank() -> "Official Philatelic Bureau"
+                    isHome || title.isNullOrBlank() -> "OFFICIAL PHILATELIC BUREAU"
                     title.length > 46               -> title.take(43) + "…"
                     else                            -> title
                 }
