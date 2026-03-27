@@ -1,15 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:id="@+id/navigation_home"
-        android:icon="@drawable/ic_home"
-        android:title="Home" />
-    <item
-        android:id="@+id/navigation_shop"
-        android:icon="@drawable/ic_shop"
-        android:title="Shop" />
-    <item
-        android:id="@+id/navigation_cart"
-        android:icon="@drawable/ic_cart"
-        android:title="Cart" />
+
+    <!-- Primary navigation -->
+    <group android:id="@+id/group_nav" android:checkableBehavior="single">
+        <item
+            android:id="@+id/navigation_home"
+            android:icon="@drawable/ic_home"
+            android:title="Home" />
+        <item
+            android:id="@+id/navigation_shop"
+            android:icon="@drawable/ic_shop"
+            android:title="Shop" />
+        <item
+            android:id="@+id/navigation_cart"
+            android:icon="@drawable/ic_cart"
+            android:title="Cart" />
+    </group>
+
+    <!--
+        Account actions — Login and Sign Up are shown when logged OUT.
+        Logout is shown when logged IN.
+        Visibility is toggled dynamically in MainActivity.kt via
+        detectAndUpdateAuthState() after each page load.
+    -->
+    <group android:id="@+id/group_auth_guest">
+        <item
+            android:id="@+id/navigation_login"
+            android:icon="@drawable/ic_login"
+            android:title="Login"
+            android:visible="true" />
+        <item
+            android:id="@+id/navigation_signup"
+            android:icon="@drawable/ic_signup"
+            android:title="Sign Up"
+            android:visible="true" />
+    </group>
+
+    <group android:id="@+id/group_auth_user">
+        <item
+            android:id="@+id/navigation_logout"
+            android:icon="@drawable/ic_logout"
+            android:title="Logout"
+            android:visible="false" />
+    </group>
+
 </menu>

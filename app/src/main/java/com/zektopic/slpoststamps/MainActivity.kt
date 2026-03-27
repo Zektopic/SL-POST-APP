@@ -21,8 +21,9 @@ import com.zektopic.slpoststamps.databinding.ActivityMainBinding
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    private val TARGET_URL = "https://stamps.slpost.gov.lk/"
-    private val TARGET_DOMAIN = "slpost.gov.lk" // Broader domain catch
+    private val TARGET_URL   = "https://stamps.slpost.gov.lk/"
+    private val LOGOUT_URL   = "https://stamps.slpost.gov.lk/logout/"
+    private val TARGET_DOMAIN = "slpost.gov.lk"
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -55,20 +56,57 @@ class MainActivity : AppCompatActivity() {
         binding.navigationView.setNavigationItemSelectedListener { item ->
             when (item.itemId) {
                 R.id.navigation_home -> {
-                    // Navigate to Home
                     binding.webView.loadUrl(TARGET_URL)
                 }
                 R.id.navigation_shop -> {
-                    // Navigate to the categories hash or just the base url (which is the shop)
                     binding.webView.loadUrl(TARGET_URL)
                 }
                 R.id.navigation_cart -> {
-                    // Navigate to cart URL or trigger the native view-cart icon via javascript
-                    val triggerCartJS = "document.querySelector('.view-cart-button')?.click();"
-                    binding.webView.evaluateJavascript(triggerCartJS, null)
+                    // Try clicking the site's cart icon via JS; falls back gracefully if not found
+                    binding.webView.evaluateJavascript(
+                        "document.querySelector('.view-cart-button, .cart-icon, a[href*=\"cart\"]')?.click();",
+                        null
+                    )
+                }
+                R.id.navigation_login -> {
+                    // Try to open the site's login modal via JS first.
+                    // If the modal trigger doesn't exist (e.g. already on a page without it),
+                    // fall back to navigating to the account page.
+                    val loginJs = """
+                        (function(){
+                            var t = document.querySelector(
+                                '[data-target="#loginModal"], [href="#loginModal"], ' +
+                                '.login-btn, #login-trigger, .open-login'
+                            );
+                            if(t){ t.click(); return 'modal'; }
+                            window.location.href='${TARGET_URL}my-account/';
+                            return 'navigate';
+                        })();
+                    """.trimIndent()
+                    binding.webView.evaluateJavascript(loginJs, null)
+                }
+                R.id.navigation_signup -> {
+                    // Try to open the site's registration modal via JS first.
+                    // Note: the site spells the modal id as "registetModal" (original typo).
+                    val signupJs = """
+                        (function(){
+                            var t = document.querySelector(
+                                '[data-target="#registetModal"], [href="#registetModal"], ' +
+                                '[data-target="#registerModal"], [href="#registerModal"], ' +
+                                '.register-btn, .open-register, #signup-trigger'
+                            );
+                            if(t){ t.click(); return 'modal'; }
+                            window.location.href='${TARGET_URL}my-account/?action=register';
+                            return 'navigate';
+                        })();
+                    """.trimIndent()
+                    binding.webView.evaluateJavascript(signupJs, null)
+                }
+                R.id.navigation_logout -> {
+                    // Navigate directly to the logout URL provided
+                    binding.webView.loadUrl(LOGOUT_URL)
                 }
             }
-            // Close sidebar after tapping an item
             binding.drawerLayout.closeDrawer(GravityCompat.START)
             true
         }
@@ -131,6 +169,9 @@ class MainActivity : AppCompatActivity() {
 
                 // Inject UX enhancements from assets/inject.js
                 injectAssetJs(view, "inject.js")
+
+                // Check whether the user is logged in and update the drawer menu accordingly
+                detectAndUpdateAuthState(view)
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
@@ -191,6 +232,55 @@ class MainActivity : AppCompatActivity() {
             binding.swipeRefreshLayout.visibility = View.VISIBLE
             binding.webView.reload()
         }
+    }
+
+    /**
+     * Runs a small JS snippet in the WebView to check whether a logged-in user
+     * session is active on the page, then updates the drawer menu visibility so
+     * that guests see [Login / Sign Up] and authenticated users see [Logout].
+     *
+     * Detection strategy: look for any element that only exists for logged-in users —
+     * typically a logout link, a "My Account" link, or a user-greeting element.
+     * Returns the string "true" or "false" which we parse in the callback.
+     */
+    private fun detectAndUpdateAuthState(view: WebView?) {
+        val detectJs = """
+            (function(){
+                var signals = [
+                    'a[href*="logout"]',
+                    '.logout-link',
+                    '#logout',
+                    '.user-logged-in',
+                    '.woocommerce-MyAccount-navigation',
+                    '.user-greeting',
+                    '.account-username'
+                ];
+                for(var i=0;i<signals.length;i++){
+                    if(document.querySelector(signals[i])) return 'true';
+                }
+                return 'false';
+            })();
+        """.trimIndent()
+
+        view?.evaluateJavascript(detectJs) { result ->
+            // evaluateJavascript returns JS string values wrapped in quotes → strip them
+            val isLoggedIn = result?.trim('"') == "true"
+            runOnUiThread { updateAuthMenuState(isLoggedIn) }
+        }
+    }
+
+    /**
+     * Shows [Login + Sign Up] when the user is a guest, and [Logout] when
+     * the user is authenticated. Keeps the drawer menu context-aware without
+     * needing a separate backend session.
+     */
+    private fun updateAuthMenuState(isLoggedIn: Boolean) {
+        val menu = binding.navigationView.menu
+        // Guest items
+        menu.findItem(R.id.navigation_login)?.isVisible  = !isLoggedIn
+        menu.findItem(R.id.navigation_signup)?.isVisible = !isLoggedIn
+        // Authenticated item
+        menu.findItem(R.id.navigation_logout)?.isVisible = isLoggedIn
     }
 
     /**
