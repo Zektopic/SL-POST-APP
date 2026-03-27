@@ -21,9 +21,15 @@ import com.zektopic.slpoststamps.databinding.ActivityMainBinding
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    private val TARGET_URL   = "https://stamps.slpost.gov.lk/"
-    private val LOGOUT_URL   = "https://stamps.slpost.gov.lk/logout/"
+    private val TARGET_URL    = "https://stamps.slpost.gov.lk/"
+    private val LOGIN_URL     = "https://stamps.slpost.gov.lk/users/login"
+    private val REGISTER_URL  = "https://stamps.slpost.gov.lk/users/register"
+    private val LOGOUT_URL    = "https://stamps.slpost.gov.lk/logout/"
     private val TARGET_DOMAIN = "slpost.gov.lk"
+
+    // Stores the logged-in user's profile URL once detected from the DOM (/users/view/{id}).
+    // Starts as the generic users path; updated by detectAndUpdateAuthState on first login.
+    private var accountUrl: String = "https://stamps.slpost.gov.lk/users/"
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -69,41 +75,20 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
                 R.id.navigation_login -> {
-                    // Try to open the site's login modal via JS first.
-                    // If the modal trigger doesn't exist (e.g. already on a page without it),
-                    // fall back to navigating to the account page.
-                    val loginJs = """
-                        (function(){
-                            var t = document.querySelector(
-                                '[data-target="#loginModal"], [href="#loginModal"], ' +
-                                '.login-btn, #login-trigger, .open-login'
-                            );
-                            if(t){ t.click(); return 'modal'; }
-                            window.location.href='${TARGET_URL}my-account/';
-                            return 'navigate';
-                        })();
-                    """.trimIndent()
-                    binding.webView.evaluateJavascript(loginJs, null)
+                    // The site uses CakePHP-style routing: /users/login
+                    // We navigate directly because the header login trigger is hidden by our CSS injection.
+                    binding.webView.loadUrl(LOGIN_URL)
                 }
                 R.id.navigation_signup -> {
-                    // Try to open the site's registration modal via JS first.
-                    // Note: the site spells the modal id as "registetModal" (original typo).
-                    val signupJs = """
-                        (function(){
-                            var t = document.querySelector(
-                                '[data-target="#registetModal"], [href="#registetModal"], ' +
-                                '[data-target="#registerModal"], [href="#registerModal"], ' +
-                                '.register-btn, .open-register, #signup-trigger'
-                            );
-                            if(t){ t.click(); return 'modal'; }
-                            window.location.href='${TARGET_URL}my-account/?action=register';
-                            return 'navigate';
-                        })();
-                    """.trimIndent()
-                    binding.webView.evaluateJavascript(signupJs, null)
+                    // CakePHP register page: /users/register
+                    binding.webView.loadUrl(REGISTER_URL)
+                }
+                R.id.navigation_account -> {
+                    // Navigate to the stored account URL (/users/view/{id}).
+                    // accountUrl is populated by detectAndUpdateAuthState after login.
+                    binding.webView.loadUrl(accountUrl)
                 }
                 R.id.navigation_logout -> {
-                    // Navigate directly to the logout URL provided
                     binding.webView.loadUrl(LOGOUT_URL)
                 }
             }
@@ -244,27 +229,56 @@ class MainActivity : AppCompatActivity() {
      * Returns the string "true" or "false" which we parse in the callback.
      */
     private fun detectAndUpdateAuthState(view: WebView?) {
+        // Strategy 1 (fastest): current URL tells us login state immediately.
+        val currentUrl = view?.url ?: ""
+        when {
+            currentUrl.contains("/users/view/") || currentUrl.contains("/users/edit/") -> {
+                // We're ON the account page — capture the exact URL for the drawer shortcut.
+                accountUrl = currentUrl
+                updateAuthMenuState(isLoggedIn = true)
+                return
+            }
+            currentUrl.contains("/users/login") || currentUrl.contains("/users/register") -> {
+                updateAuthMenuState(isLoggedIn = false)
+                return
+            }
+        }
+
+        // Strategy 2: the header is visually hidden but still in the DOM.
+        // For logged-in users the header contains a logout link and a /users/view/{id} link.
+        // We read both signals and also capture the account URL if found.
         val detectJs = """
             (function(){
+                // Look for a link to the user's profile page
+                var accountLink = document.querySelector('a[href*="/users/view/"]');
+                if(accountLink) return 'loggedin:' + accountLink.href;
+
+                // Fallback signals
                 var signals = [
-                    'a[href*="logout"]',
+                    'a[href*="/logout"]',
                     '.logout-link',
                     '#logout',
                     '.user-logged-in',
-                    '.woocommerce-MyAccount-navigation',
-                    '.user-greeting',
-                    '.account-username'
+                    '.auth-user',
+                    '.user-nav'
                 ];
-                for(var i=0;i<signals.length;i++){
-                    if(document.querySelector(signals[i])) return 'true';
+                for(var i = 0; i < signals.length; i++){
+                    if(document.querySelector(signals[i])) return 'loggedin:';
                 }
-                return 'false';
+                return 'guest';
             })();
         """.trimIndent()
 
         view?.evaluateJavascript(detectJs) { result ->
-            // evaluateJavascript returns JS string values wrapped in quotes → strip them
-            val isLoggedIn = result?.trim('"') == "true"
+            val raw = result?.trim('"') ?: "guest"
+            val isLoggedIn = raw.startsWith("loggedin")
+            if (isLoggedIn) {
+                // Extract account URL if the DOM gave us one (format: "loggedin:https://...")
+                val extracted = raw.removePrefix("loggedin:").trim()
+                if (extracted.contains("/users/view/")) {
+                    accountUrl = extracted
+                }
+            }
             runOnUiThread { updateAuthMenuState(isLoggedIn) }
         }
     }
@@ -276,11 +290,12 @@ class MainActivity : AppCompatActivity() {
      */
     private fun updateAuthMenuState(isLoggedIn: Boolean) {
         val menu = binding.navigationView.menu
-        // Guest items
-        menu.findItem(R.id.navigation_login)?.isVisible  = !isLoggedIn
-        menu.findItem(R.id.navigation_signup)?.isVisible = !isLoggedIn
-        // Authenticated item
-        menu.findItem(R.id.navigation_logout)?.isVisible = isLoggedIn
+        // Guest-only items
+        menu.findItem(R.id.navigation_login)?.isVisible   = !isLoggedIn
+        menu.findItem(R.id.navigation_signup)?.isVisible  = !isLoggedIn
+        // Authenticated-only items
+        menu.findItem(R.id.navigation_account)?.isVisible = isLoggedIn
+        menu.findItem(R.id.navigation_logout)?.isVisible  = isLoggedIn
     }
 
     /**

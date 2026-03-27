@@ -21,9 +21,24 @@ body, html {
 }
 
 /* -------- HIDE NATIVE WEBSITE CHROME -------- */
-/* Replaced entirely by native app Toolbar + NavigationDrawer */
-#header, header, .header, .site-header, .main-header,
-nav.navbar, #main-nav, .top-bar, .header-top, .header-bottom,
+/* Replaced entirely by native app Toolbar + NavigationDrawer.
+   EXCEPTION: on /users/login and /users/register the header is kept so the
+   site's own page structure renders correctly (it may not use a full modal
+   on those dedicated pages). The JS injector skips hiding on auth pages. */
+body:not(.slp-auth-page) #header,
+body:not(.slp-auth-page) header,
+body:not(.slp-auth-page) .header,
+body:not(.slp-auth-page) .site-header,
+body:not(.slp-auth-page) .main-header,
+body:not(.slp-auth-page) nav.navbar,
+body:not(.slp-auth-page) #main-nav,
+body:not(.slp-auth-page) .top-bar,
+body:not(.slp-auth-page) .header-top,
+body:not(.slp-auth-page) .header-bottom {
+    display: none !important;
+}
+
+/* Footer always hidden — app provides no equivalent */
 footer, #footer, .footer, .site-footer, .main-footer,
 .footer-widgets, .footer-bottom,
 .back-to-top, .scroll-to-top, #back-to-top,

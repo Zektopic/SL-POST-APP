@@ -37,6 +37,13 @@
     </group>
 
     <group android:id="@+id/group_auth_user">
+        <!-- Navigates to /users/view/{id}. The exact URL is resolved by detectAndUpdateAuthState
+             reading it from the DOM; we store it and navigate to it here. -->
+        <item
+            android:id="@+id/navigation_account"
+            android:icon="@drawable/ic_signup"
+            android:title="My Account"
+            android:visible="false" />
         <item
             android:id="@+id/navigation_logout"
             android:icon="@drawable/ic_logout"

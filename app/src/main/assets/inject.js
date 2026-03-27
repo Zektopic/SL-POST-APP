@@ -107,7 +107,16 @@
         });
     }, { passive: true });
 
-    /* -------- 6. HIDE NATIVE SITE COOKIE/POPUP BANNERS -------- */
+    /* -------- 6. TAG AUTH PAGES SO CSS KEEPS THE HEADER VISIBLE -------- */
+    /* On /users/login and /users/register the site's own header nav is needed
+       for the page layout to render correctly. We add a body class that the
+       CSS uses to skip the header-hide rule on these pages only. */
+    var path = window.location.pathname;
+    if (path.indexOf('/users/login') !== -1 || path.indexOf('/users/register') !== -1) {
+        document.body.classList.add('slp-auth-page');
+    }
+
+    /* -------- 7. HIDE NATIVE SITE COOKIE/POPUP BANNERS -------- */
     /* Common cookie consent or promo popup IDs — adjust as needed */
     var POPUP_SELECTORS = [
         '#cookie-notice', '#cookie-consent', '.cookie-banner',
