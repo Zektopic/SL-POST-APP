@@ -985,3 +985,10 @@ input[type="range"] {
     width: 50% !important;
   }
 }
+
+/* ──────── NATIVE APP FAB CLEARANCE ──────── */
+/* Prevents the bottom of page content from being hidden under the cart FAB.
+   FAB height 56dp + bottom margin 20dp + breathing room = ~96px */
+body {
+  padding-bottom: 96px !important;
+}

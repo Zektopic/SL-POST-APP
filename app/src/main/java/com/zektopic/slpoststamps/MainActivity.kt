@@ -18,6 +18,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.zektopic.slpoststamps.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -30,20 +31,28 @@ class MainActivity : AppCompatActivity() {
     private val TARGET_DOMAIN = "slpost.gov.lk"
 
     // Stores the logged-in user's profile URL once detected from the DOM (/users/view/{id}).
-    // Starts as the generic users path; updated by detectAndUpdateAuthState on first login.
     private var accountUrl: String = "https://stamps.slpost.gov.lk/users/"
+
+    // True once the branded loading overlay has been dismissed after the first page load.
+    // Subsequent in-app navigations use only the progress bar — not the full-screen overlay.
+    private var firstLoadDismissed = false
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Draw content behind the status bar and navigation bar (edge-to-edge).
-        // DrawerLayout + AppBarLayout have fitsSystemWindows=true so they
-        // automatically inset themselves without any extra code here.
+        // Draw content behind the system bars (edge-to-edge).
+        // AppBarLayout + DrawerLayout (fitsSystemWindows=true) handle the inset padding.
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // Style the system navigation bar so it matches the content surface
+        // instead of appearing as a black/grey strip below the app.
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightNavigationBars = true   // dark icons on light nav bar
+        }
 
         // Set MaterialToolbar as Action Bar for the drawer toggle
         setSupportActionBar(binding.toolbar)
@@ -51,6 +60,7 @@ class MainActivity : AppCompatActivity() {
         setupDrawer()
         setupWebView()
         setupSwipeRefresh()
+        setupCartFab()
         setupBackButtonHandler()
         setupRetryButton()
 
@@ -105,6 +115,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupWebView() {
+        // ── Match WebView background to the app surface colour ──
+        // This eliminates the jarring white flash between page navigations because
+        // the WebView canvas colour matches the injected CSS body background (#FEFBFF).
+        binding.webView.setBackgroundColor(ContextCompat.getColor(this, R.color.md_background))
+
+        // Disable the default Android overscroll glow/bounce so the WebView feels native.
+        binding.webView.overScrollMode = WebView.OVER_SCROLL_NEVER
+
         // Enable necessary settings for modern rendering and functions
         binding.webView.settings.apply {
             javaScriptEnabled = true
@@ -112,11 +130,7 @@ class MainActivity : AppCompatActivity() {
             setSupportZoom(true)
             builtInZoomControls = true
             displayZoomControls = false // Hide the clunky native zoom buttons
-            
-            // Fix for Android blank white screens due to mixed external assets and APIs
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-            }
+            mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
 
         binding.webView.webViewClient = object : WebViewClient() {
@@ -157,17 +171,35 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                // Stop pull-to-refresh spinner
                 binding.swipeRefreshLayout.isRefreshing = false
 
-                // Re-inject CSS to ensure it overrides any late-loaded site styles
+                // Re-inject CSS (overrides any late-loaded site styles)
                 injectAssetCss(view, "inject.css")
 
-                // Inject UX enhancements from assets/inject.js
+                // Inject UX enhancements
                 injectAssetJs(view, "inject.js")
 
-                // Check whether the user is logged in and update the drawer menu accordingly
+                // Auth state drives drawer menu visibility
                 detectAndUpdateAuthState(view)
+
+                // Hide the cart FAB on pages where the cart IS the page, and on auth pages
+                val currentUrl = url ?: ""
+                binding.cartFab.visibility = if (
+                    currentUrl.contains("/users/login") ||
+                    currentUrl.contains("/users/register")
+                ) View.GONE else View.VISIBLE
+
+                // ── Dismiss the branded splash overlay once on the very first page load ──
+                // Subsequent navigations use only the thin progress bar.
+                if (!firstLoadDismissed) {
+                    firstLoadDismissed = true
+                    binding.loadingOverlay.animate()
+                        .alpha(0f)
+                        .setDuration(600)
+                        .setStartDelay(300)   // give the CSS injection a moment to apply
+                        .withEndAction { binding.loadingOverlay.visibility = View.GONE }
+                        .start()
+                }
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
@@ -184,13 +216,25 @@ class MainActivity : AppCompatActivity() {
         binding.webView.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 super.onProgressChanged(view, newProgress)
-                // Tie progress visually to horizontal bar
                 binding.progressBar.progress = newProgress
-                if (newProgress == 100) {
-                    binding.progressBar.visibility = View.GONE
-                } else {
-                    binding.progressBar.visibility = View.VISIBLE
+                binding.progressBar.visibility = if (newProgress == 100) View.GONE else View.VISIBLE
+            }
+
+            /**
+             * Updates the toolbar subtitle with the page title so the user always
+             * knows where they are — just like a native app's screen header.
+             * Falls back to the brand tagline on the home page or blank titles.
+             */
+            override fun onReceivedTitle(view: WebView?, title: String?) {
+                super.onReceivedTitle(view, title)
+                val url = view?.url ?: ""
+                val isHome = url.trimEnd('/') == TARGET_URL.trimEnd('/')
+                val subtitle = when {
+                    isHome || title.isNullOrBlank() -> "Official Philatelic Bureau"
+                    title.length > 46               -> title.take(43) + "…"
+                    else                            -> title
                 }
+                binding.toolbar.subtitle = subtitle
             }
         }
     }
@@ -229,8 +273,28 @@ class MainActivity : AppCompatActivity() {
         })
     }
     
+    /**
+     * The cart FAB gives one-tap access to the shopping cart from anywhere in the app.
+     * It tries to click the site's own cart link via JS first; if none is found it falls
+     * back to a best-guess cart URL (adjust the fallback once the actual cart URL is known).
+     */
+    private fun setupCartFab() {
+        binding.cartFab.setOnClickListener {
+            binding.webView.evaluateJavascript(
+                """(function(){
+                    var cartLink = document.querySelector(
+                        'a[href*="cart"], a[href*="orders"], .cart-link,
+                         .view-cart-button, .header-cart-btn, [data-cart]'
+                    );
+                    if (cartLink) { cartLink.click(); return; }
+                    window.location.href = 'https://stamps.slpost.gov.lk/orders/add';
+                })();""",
+                null
+            )
+        }
+    }
+
     private fun setupRetryButton() {
-        // Error screen retry logic
         binding.retryButton.setOnClickListener {
             binding.errorView.visibility = View.GONE
             binding.swipeRefreshLayout.visibility = View.VISIBLE
