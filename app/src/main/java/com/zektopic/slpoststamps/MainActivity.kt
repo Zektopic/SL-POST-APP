@@ -15,7 +15,9 @@ import android.webkit.WebViewClient
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
+import androidx.core.view.WindowCompat
 import com.zektopic.slpoststamps.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -35,10 +37,15 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // Draw content behind the status bar and navigation bar (edge-to-edge).
+        // DrawerLayout + AppBarLayout have fitsSystemWindows=true so they
+        // automatically inset themselves without any extra code here.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Set Toolbar as Action Bar for the Drawer Sidebar toggle icon handling
+        // Set MaterialToolbar as Action Bar for the drawer toggle
         setSupportActionBar(binding.toolbar)
 
         setupDrawer()
@@ -185,7 +192,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupSwipeRefresh() {
-        // Standard pull-to-refresh
+        // Brand colours for the pull-to-refresh spinner
+        binding.swipeRefreshLayout.setColorSchemeColors(
+            ContextCompat.getColor(this, R.color.md_primary),
+            ContextCompat.getColor(this, R.color.md_secondary),
+            ContextCompat.getColor(this, R.color.md_tertiary)
+        )
+        binding.swipeRefreshLayout.setProgressBackgroundColorSchemeColor(
+            ContextCompat.getColor(this, R.color.md_surface)
+        )
         binding.swipeRefreshLayout.setOnRefreshListener {
             binding.webView.reload()
         }
