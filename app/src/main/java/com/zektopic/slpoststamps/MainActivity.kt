@@ -37,6 +37,9 @@ class MainActivity : AppCompatActivity() {
     // Subsequent in-app navigations use only the progress bar — not the full-screen overlay.
     private var firstLoadDismissed = false
 
+    // Tracks login state so the Account tab knows where to navigate.
+    private var isUserLoggedIn = false
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,9 +51,10 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Style the system navigation bar so it matches the content surface
-        // instead of appearing as a black/grey strip below the app.
+        // Style system bars: toolbar + bottom nav are both light surfaces,
+        // so we need dark icons on both the status bar and the navigation bar.
         WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars     = true   // dark icons on white toolbar
             isAppearanceLightNavigationBars = true   // dark icons on light nav bar
         }
 
@@ -60,7 +64,7 @@ class MainActivity : AppCompatActivity() {
         setupDrawer()
         setupWebView()
         setupSwipeRefresh()
-        setupCartFab()
+        setupBottomNav()
         setupBackButtonHandler()
         setupRetryButton()
 
@@ -78,36 +82,10 @@ class MainActivity : AppCompatActivity() {
 
         binding.navigationView.setNavigationItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.navigation_home -> {
-                    binding.webView.loadUrl(TARGET_URL)
-                }
-                R.id.navigation_shop -> {
-                    binding.webView.loadUrl(TARGET_URL)
-                }
-                R.id.navigation_cart -> {
-                    // Try clicking the site's cart icon via JS; falls back gracefully if not found
-                    binding.webView.evaluateJavascript(
-                        "document.querySelector('.view-cart-button, .cart-icon, a[href*=\"cart\"]')?.click();",
-                        null
-                    )
-                }
-                R.id.navigation_login -> {
-                    // The site uses CakePHP-style routing: /users/login
-                    // We navigate directly because the header login trigger is hidden by our CSS injection.
-                    binding.webView.loadUrl(LOGIN_URL)
-                }
-                R.id.navigation_signup -> {
-                    // CakePHP register page: /users/register
-                    binding.webView.loadUrl(REGISTER_URL)
-                }
-                R.id.navigation_account -> {
-                    // Navigate to the stored account URL (/users/view/{id}).
-                    // accountUrl is populated by detectAndUpdateAuthState after login.
-                    binding.webView.loadUrl(accountUrl)
-                }
-                R.id.navigation_logout -> {
-                    binding.webView.loadUrl(LOGOUT_URL)
-                }
+                R.id.navigation_login -> binding.webView.loadUrl(LOGIN_URL)
+                R.id.navigation_signup -> binding.webView.loadUrl(REGISTER_URL)
+                R.id.navigation_account -> binding.webView.loadUrl(accountUrl)
+                R.id.navigation_logout -> binding.webView.loadUrl(LOGOUT_URL)
             }
             binding.drawerLayout.closeDrawer(GravityCompat.START)
             true
@@ -179,15 +157,11 @@ class MainActivity : AppCompatActivity() {
                 // Inject UX enhancements
                 injectAssetJs(view, "inject.js")
 
-                // Auth state drives drawer menu visibility
+                // Auth state drives drawer + bottom nav visibility
                 detectAndUpdateAuthState(view)
 
-                // Hide the cart FAB on pages where the cart IS the page, and on auth pages
-                val currentUrl = url ?: ""
-                binding.cartFab.visibility = if (
-                    currentUrl.contains("/users/login") ||
-                    currentUrl.contains("/users/register")
-                ) View.GONE else View.VISIBLE
+                // Keep the bottom nav selection in sync with the current URL
+                syncBottomNavToUrl(url)
 
                 // ── Dismiss the branded splash overlay once on the very first page load ──
                 // Subsequent navigations use only the thin progress bar.
@@ -274,24 +248,61 @@ class MainActivity : AppCompatActivity() {
     }
     
     /**
-     * The cart FAB gives one-tap access to the shopping cart from anywhere in the app.
-     * It tries to click the site's own cart link via JS first; if none is found it falls
-     * back to a best-guess cart URL (adjust the fallback once the actual cart URL is known).
+     * Wires up the native bottom navigation bar.
+     *
+     * Home    → TARGET_URL (catalogue root)
+     * Browse  → TARGET_URL (same catalogue — can be refined once a search URL is known)
+     * Cart    → tries JS click on the site's cart link; falls back to /orders/add
+     * Account → Login page when guest; /users/view/{id} when authenticated
+     *
+     * Reselecting the current tab does nothing (prevents unwanted reloads).
      */
-    private fun setupCartFab() {
-        binding.cartFab.setOnClickListener {
-            binding.webView.evaluateJavascript(
-                """(function(){
-                    var cartLink = document.querySelector(
-                        'a[href*="cart"], a[href*="orders"], .cart-link,
-                         .view-cart-button, .header-cart-btn, [data-cart]'
-                    );
-                    if (cartLink) { cartLink.click(); return; }
-                    window.location.href = 'https://stamps.slpost.gov.lk/orders/add';
-                })();""",
-                null
-            )
+    private fun setupBottomNav() {
+        binding.bottomNavView.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_home -> binding.webView.loadUrl(TARGET_URL)
+
+                R.id.nav_browse -> binding.webView.loadUrl(TARGET_URL)
+
+                R.id.nav_cart -> binding.webView.evaluateJavascript(
+                    """(function(){
+                        var link = document.querySelector(
+                            'a[href*="cart"], a[href*="orders"], .cart-link,
+                             .view-cart-button, .header-cart-btn, [data-cart]'
+                        );
+                        if (link) { link.click(); return; }
+                        window.location.href = 'https://stamps.slpost.gov.lk/orders/add';
+                    })();""",
+                    null
+                )
+
+                R.id.nav_account -> {
+                    if (isUserLoggedIn) binding.webView.loadUrl(accountUrl)
+                    else               binding.webView.loadUrl(LOGIN_URL)
+                }
+            }
+            true
         }
+
+        // Reselecting the active tab does nothing — prevents accidental reloads.
+        binding.bottomNavView.setOnItemReselectedListener { /* no-op */ }
+    }
+
+    /**
+     * Keeps the bottom nav's selected item in sync with wherever the WebView
+     * currently is, so tapping Back always returns to the right highlighted tab.
+     */
+    private fun syncBottomNavToUrl(url: String?) {
+        val u = url ?: return
+        val id = when {
+            u.contains("/orders") || u.contains("/cart") -> R.id.nav_cart
+            u.contains("/users/")                        -> R.id.nav_account
+            else                                         -> R.id.nav_home
+        }
+        // Avoid triggering the item-selected listener while syncing.
+        binding.bottomNavView.setOnItemSelectedListener(null)
+        binding.bottomNavView.selectedItemId = id
+        setupBottomNav()
     }
 
     private fun setupRetryButton() {
@@ -367,18 +378,26 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Shows [Login + Sign Up] when the user is a guest, and [Logout] when
-     * the user is authenticated. Keeps the drawer menu context-aware without
-     * needing a separate backend session.
+     * Updates both the navigation drawer (auth items) and the bottom nav
+     * Account tab label to reflect the current login state.
+     *
+     * Guest:         drawer shows [Login / Sign Up];  Account tab labelled "Login"
+     * Authenticated: drawer shows [My Account / Logout]; Account tab labelled "Account"
      */
     private fun updateAuthMenuState(isLoggedIn: Boolean) {
+        isUserLoggedIn = isLoggedIn
+
+        // Drawer — guest-only items
         val menu = binding.navigationView.menu
-        // Guest-only items
         menu.findItem(R.id.navigation_login)?.isVisible   = !isLoggedIn
         menu.findItem(R.id.navigation_signup)?.isVisible  = !isLoggedIn
-        // Authenticated-only items
+        // Drawer — authenticated-only items
         menu.findItem(R.id.navigation_account)?.isVisible = isLoggedIn
         menu.findItem(R.id.navigation_logout)?.isVisible  = isLoggedIn
+
+        // Bottom nav — update Account tab label so the user knows what to expect
+        binding.bottomNavView.menu.findItem(R.id.nav_account)?.title =
+            if (isLoggedIn) "Account" else "Login"
     }
 
     /**

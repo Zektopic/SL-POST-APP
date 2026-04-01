@@ -746,9 +746,11 @@ input[type="range"] {
   }
 }
 
-/* ──────── NATIVE APP FAB CLEARANCE ──────── */
+/* ──────── BOTTOM BREATHING ROOM ──────── */
+/* The BottomNavigationView is a true layout sibling (not an overlay), so no
+   large clearance is needed — just a comfortable bottom margin for readability. */
 body {
-  padding-bottom: 96px !important;
+  padding-bottom: 24px !important;
 }
 
 /* ──────── STAR RATING ──────── */

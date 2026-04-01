@@ -1,28 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Drawer menu — auth actions only.
+    Primary navigation (Home / Browse / Cart) lives in the bottom nav bar.
+    Visibility is toggled dynamically by detectAndUpdateAuthState() in MainActivity.
+-->
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Primary navigation -->
-    <group android:id="@+id/group_nav" android:checkableBehavior="single">
-        <item
-            android:id="@+id/navigation_home"
-            android:icon="@drawable/ic_home"
-            android:title="Home" />
-        <item
-            android:id="@+id/navigation_shop"
-            android:icon="@drawable/ic_shop"
-            android:title="Shop" />
-        <item
-            android:id="@+id/navigation_cart"
-            android:icon="@drawable/ic_cart"
-            android:title="Cart" />
-    </group>
-
-    <!--
-        Account actions — Login and Sign Up are shown when logged OUT.
-        Logout is shown when logged IN.
-        Visibility is toggled dynamically in MainActivity.kt via
-        detectAndUpdateAuthState() after each page load.
-    -->
     <group android:id="@+id/group_auth_guest">
         <item
             android:id="@+id/navigation_login"
@@ -37,8 +20,6 @@
     </group>
 
     <group android:id="@+id/group_auth_user">
-        <!-- Navigates to /users/view/{id}. The exact URL is resolved by detectAndUpdateAuthState
-             reading it from the DOM; we store it and navigate to it here. -->
         <item
             android:id="@+id/navigation_account"
             android:icon="@drawable/ic_signup"
