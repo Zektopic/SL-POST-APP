@@ -184,8 +184,20 @@
                 android:id="@+id/loadingOverlay"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:background="@drawable/bg_nav_header"
                 android:visibility="visible">
+
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/splash_image"
+                    android:contentDescription="Splash Background" />
+
+                <!-- Dark overlay to ensure text and spinner are visible -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="#66000000" />
 
                 <LinearLayout
                     android:layout_width="wrap_content"
