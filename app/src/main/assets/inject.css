@@ -64,27 +64,38 @@ body {
 }
 
 /* ──────── HIDE WEBSITE CHROME ──────── */
-body:not(.slp-auth-page) #header,
-body:not(.slp-auth-page) header,
-body:not(.slp-auth-page) .header,
-body:not(.slp-auth-page) .site-header,
-body:not(.slp-auth-page) .main-header,
-body:not(.slp-auth-page) nav.navbar,
-body:not(.slp-auth-page) .navbar,
-body:not(.slp-auth-page) .navbar-fixed-top,
-body:not(.slp-auth-page) .navbar-default,
-body:not(.slp-auth-page) #main-nav,
-body:not(.slp-auth-page) .top-bar,
-body:not(.slp-auth-page) .header-top,
-body:not(.slp-auth-page) .header-bottom {
+/* The entire site header (logo strip .header_top, .backbround-top, menus)
+   lives inside nav.navbar-inverse, so hiding .navbar removes all of it.
+   The app's own toolbar + bottom nav replace it on every page, including
+   /login (its form is a .profile card in the body, not in the navbar). */
+#header,
+header,
+.header,
+.site-header,
+.main-header,
+nav.navbar,
+.navbar,
+.navbar-fixed-top,
+.navbar-default,
+#main-nav,
+.top-bar,
+.header-top,
+.header-bottom {
   display: none !important;
 }
 
 footer, #footer, .footer, .site-footer, .main-footer,
 .footer-widgets, .footer-bottom,
 .back-to-top, .scroll-to-top, #back-to-top,
+#scrollUp,
 .breadcrumb-wrapper, .breadcrumb,
 .page-header.breadcrumb-section {
+  display: none !important;
+}
+
+/* Carousel dots/arrows float over content once the slider is resized */
+.carousel-indicators,
+.control-carousel {
   display: none !important;
 }
 
@@ -217,38 +228,66 @@ a.btn-info,
 }
 
 /* ──────── PRODUCT CARDS ──────── */
+/* Real markup: div.col-sm-4.col-lg-3.col-md-4.col-xs-12
+     > .thumbnail.cart-thumb.product-image-wrapper
+       > .single-product
+         > .productinfo (.img-wrapper > img.product-thumb-image,
+                         label.item-type, .caption > p > a, .value > h2,
+                         .long-desc = desktop hover overlay)
+         > .choose > .button-addto-cart > button.add-to-cart            */
+.thumbnail.cart-thumb,
+.product-image-wrapper,
 .product-item,
 .product-card,
 .stamp-item,
 ul.products li.product,
-.product,
-.product-grid-item,
-.col-sm-3 > div,
-.tab-pane .col-sm-3 > div {
+.product-grid-item {
   border-radius: var(--slp-radius-md) !important;
   overflow: hidden !important;
   box-shadow: var(--slp-shadow-1) !important;
   border: none !important;
+  padding: 0 !important;
   background: var(--slp-surface-low) !important;
   transition: transform var(--slp-dur) var(--slp-ease),
               box-shadow var(--slp-dur) var(--slp-ease) !important;
   margin-bottom: 16px !important;
 }
 
+.thumbnail.cart-thumb:active,
 .product-item:active,
-.product-card:active,
-ul.products li.product:active,
-.col-sm-3 > div:active {
+.product-card:active {
   transform: scale(0.975) !important;
 }
 
+.single-product {
+  position: relative !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Desktop-only hover overlay with stamp specs — useless on touch, hide it */
+.single-product .long-desc {
+  display: none !important;
+}
+
+/* "New" corner ribbon */
+img.new-img-corner {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 48px !important;
+  height: auto !important;
+  z-index: 2 !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
 /* Product images */
+.productinfo .img-wrapper img,
+img.product-thumb-image,
 .product-item img,
 .product-card img,
-ul.products li.product img,
-.stamp-item img,
-.col-sm-3 img,
-.tab-pane img {
+.stamp-item img {
   width: 100% !important;
   height: auto !important;
   max-height: 200px !important;
@@ -257,6 +296,29 @@ ul.products li.product img,
   padding: 16px !important;
   background: var(--slp-surface-c-l) !important;
   transition: transform .3s var(--slp-ease) !important;
+}
+
+/* Card title link */
+.productinfo .caption p {
+  margin: 0 !important;
+}
+.productinfo .caption a {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: var(--slp-on-surface) !important;
+  line-height: 1.35 !important;
+  display: block !important;
+  padding: 2px 12px !important;
+  min-height: 38px !important;
+}
+
+/* Card price (site renders it as .value > h2) */
+.productinfo .value h2 {
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  color: var(--slp-primary) !important;
+  margin: 4px 0 6px !important;
+  letter-spacing: 0 !important;
 }
 
 /* Category label (e.g., "STAMPS (PHILATELIC)") */
@@ -289,10 +351,11 @@ ul.products li.product .woocommerce-loop-product__title,
 }
 
 /* ──────── PRICES ──────── */
+.productinfo b,
+.productinfo strong,
+.item-price,
 .tab-pane b,
-.tab-pane strong,
-.col-sm-3 b,
-.col-sm-3 strong {
+.tab-pane strong {
   color: var(--slp-primary) !important;
   font-weight: 700 !important;
   font-size: 15px !important;
@@ -407,6 +470,7 @@ input[type="tel"],
 input[type="search"],
 textarea,
 select,
+input.input,
 .form-control {
   border: none !important;
   border-radius: var(--slp-radius-md) !important;
@@ -420,6 +484,14 @@ select,
   margin-bottom: 12px !important;
   -webkit-appearance: none !important;
   appearance: none !important;
+}
+
+/* Selects on this site inherit a fixed navbar height that clips the text */
+select,
+select.form-control {
+  height: auto !important;
+  min-height: 48px !important;
+  line-height: 1.4 !important;
 }
 
 input:focus,
@@ -453,18 +525,6 @@ input[type="radio"] {
   margin-right: 8px !important;
   vertical-align: middle !important;
   border-radius: 4px !important;
-}
-
-/* ──────── AUTH PAGES ──────── */
-body.slp-auth-page .navbar {
-  background: linear-gradient(135deg, var(--slp-primary) 0%, var(--slp-primary-c) 100%) !important;
-  border: none !important;
-  box-shadow: var(--slp-shadow-2) !important;
-}
-
-body.slp-auth-page .navbar a,
-body.slp-auth-page .navbar-brand {
-  color: var(--slp-on-primary) !important;
 }
 
 .modal-content {
@@ -720,30 +780,31 @@ input[type="range"] {
 }
 
 /* ──────── RESPONSIVE ──────── */
+/* Product grid cells are col-xs-12 (full width on phones by default);
+   force a 2-across catalog grid so it reads like a native shop app. */
 @media (max-width: 768px) {
   .container { padding: 0 12px !important; }
 
-  .col-md-3,
-  .col-sm-3 {
+  div[class*="col-lg-3"][class*="col-xs-12"],
+  div[class*="col-md-4"][class*="col-xs-12"] {
     width: 50% !important;
     float: left !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
   }
 
-  .col-sm-3 img,
-  .tab-pane img {
+  .productinfo .img-wrapper img,
+  img.product-thumb-image {
     max-height: 140px !important;
     padding: 12px !important;
   }
 
+  .productinfo .caption a {
+    font-size: 12px !important;
+  }
+
   h1 { font-size: 20px !important; }
   h2 { font-size: 18px !important; }
-}
-
-@media (max-width: 480px) {
-  .col-md-3,
-  .col-sm-3 {
-    width: 50% !important;
-  }
 }
 
 /* ──────── BOTTOM BREATHING ROOM ──────── */
@@ -758,4 +819,440 @@ body {
 .rating,
 .product-rating {
   color: #FFA726 !important;
+}
+
+/* ──────── HOME PAGE ──────── */
+
+/* Container behind the whole content area (site ships a busy background) */
+.content-back {
+  background: transparent !important;
+}
+
+/* Announcement/news flash strip → M3 card */
+.addHomeFlash {
+  background: var(--slp-surface-low) !important;
+  border-radius: var(--slp-radius-md) !important;
+  box-shadow: var(--slp-shadow-1) !important;
+  padding: 10px 12px !important;
+  margin: 12px 0 !important;
+  border: none !important;
+  overflow: hidden !important;
+}
+
+/* Hero slider — rounded card look */
+#slider,
+#slider-carousel {
+  border-radius: var(--slp-radius-md) !important;
+  overflow: hidden !important;
+}
+#slider-carousel .carousel-inner img {
+  border-radius: var(--slp-radius-md) !important;
+}
+
+/* ──────── LOGIN / REGISTER FORMS (site-specific markup) ──────── */
+
+/* The /login page renders a .profile card and a register form container */
+.profile,
+.profile--open,
+.register-form.container {
+  max-width: 440px !important;
+  margin: 24px auto !important;
+  padding: 28px 24px !important;
+  border-radius: var(--slp-radius-lg) !important;
+  background: var(--slp-surface-low) !important;
+  box-shadow: var(--slp-shadow-2) !important;
+  border: none !important;
+  float: none !important;
+}
+
+.profile__fields .field {
+  margin-bottom: 4px !important;
+}
+
+/* Sign-in card built by inject.js from the navbar's .home-login form.
+   The site CSS sizes that form for the navbar (width:40%, inline groups,
+   tiny 10px inputs) — reset all of it for the card context. */
+.slp-login-card {
+  display: block !important;
+  max-width: 440px !important;
+  margin: 24px auto 8px !important;
+  padding: 28px 24px !important;
+  border-radius: var(--slp-radius-lg) !important;
+  background: var(--slp-surface-low) !important;
+  box-shadow: var(--slp-shadow-2) !important;
+}
+.slp-login-card h2 {
+  text-align: center !important;
+  margin: 0 0 18px !important;
+}
+.slp-login-card .home-login,
+.slp-login-card form {
+  width: 100% !important;
+  float: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+.slp-login-card .form-group {
+  width: 100% !important;
+  display: block !important;
+  margin: 0 0 12px !important;
+}
+.slp-login-card .form-control {
+  width: 100% !important;
+  font-size: 15px !important;
+  margin: 0 !important;
+  height: auto !important;
+  padding: 14px 18px !important;
+}
+.slp-login-card button[type="submit"] {
+  display: block !important;
+  width: 100% !important;
+  margin: 8px 0 0 !important;
+  padding: 14px 20px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: var(--slp-on-primary) !important;
+  background: linear-gradient(135deg, var(--slp-primary) 0%, var(--slp-primary-c) 100%) !important;
+  border: none !important;
+  border-radius: var(--slp-radius-md) !important;
+  box-shadow: 0 4px 14px rgba(124,0,26,.2) !important;
+}
+
+.remember-me,
+.register-now {
+  font-size: 13px !important;
+  color: var(--slp-on-surface-v) !important;
+  margin: 10px 0 !important;
+}
+
+/* ═══ PAGE-SPECIFIC STYLES (body classes set by page-detector.js) ═══ */
+
+/* ──────── PRODUCT DETAIL PAGE ──────── */
+
+/* Product image — larger on tablet, subtle zoom on hover */
+body.slp-page-product-detail .product-view img,
+body.slp-page-product-detail img.thumbnail,
+body.slp-page-product-detail .main-image img,
+body.slp-page-product-detail #product-image img,
+body.slp-page-product-detail .product-image img,
+body.slp-page-product-detail .image img {
+  max-height: 320px !important; transition: transform .35s var(--slp-ease) !important;
+  border-radius: var(--slp-radius-md) !important;
+  background: var(--slp-surface-c-l) !important;
+  padding: 12px !important;
+}
+body.slp-page-product-detail .product-view img:hover,
+body.slp-page-product-detail img.thumbnail:hover,
+body.slp-page-product-detail .main-image img:hover,
+body.slp-page-product-detail .product-image img:hover {
+  transform: scale(1.04) !important; cursor: zoom-in !important;
+}
+/* Price — larger, bolder, crimson with gold underline accent */
+body.slp-page-product-detail .item-price,
+body.slp-page-product-detail .price,
+body.slp-page-product-detail .product-price,
+body.slp-page-product-detail p.price,
+body.slp-page-product-detail .amount {
+  font-size: 22px !important; font-weight: 800 !important;
+  color: var(--slp-primary) !important;
+  border-bottom: 2px solid var(--slp-secondary) !important;
+  padding-bottom: 4px !important; display: inline-block !important;
+}
+
+/* Add to Cart — prominent crimson gradient, full-width */
+body.slp-page-product-detail .product .add-to-cart,
+body.slp-page-product-detail .btn-success,
+body.slp-page-product-detail .add_to_cart_button,
+body.slp-page-product-detail .single_add_to_cart_button {
+  background: linear-gradient(135deg, var(--slp-primary) 0%, var(--slp-primary-c) 100%) !important;
+  color: var(--slp-on-primary) !important; border: none !important;
+  border-radius: var(--slp-radius-md) !important; padding: 16px 24px !important;
+  font-size: 15px !important; font-weight: 700 !important;
+  letter-spacing: .4px !important; width: 100% !important;
+  box-shadow: 0 4px 16px rgba(124,0,26,.25) !important;
+  margin: 12px 0 0 0 !important; text-transform: none !important;
+  transition: all var(--slp-dur) var(--slp-ease) !important;
+}
+body.slp-page-product-detail .btn-success:active,
+body.slp-page-product-detail .add_to_cart_button:active {
+  transform: scale(0.97) !important;
+  box-shadow: 0 2px 8px rgba(124,0,26,.15) !important;
+}
+
+/* Product description — wider line-height, constrained max-width */
+body.slp-page-product-detail .product-description,
+body.slp-page-product-detail .description,
+body.slp-page-product-detail .woocommerce-product-details__short-description {
+  line-height: 1.8 !important; max-width: 640px !important;
+  font-size: 15px !important; color: var(--slp-on-surface-v) !important;
+}
+
+/* Stock status — green pill badge */
+body.slp-page-product-detail .in-stock,
+body.slp-page-product-detail p.stock.in-stock {
+  display: inline-block !important; background: #EDF7ED !important;
+  color: var(--slp-success) !important; font-size: 12px !important;
+  font-weight: 700 !important; letter-spacing: .4px !important;
+  padding: 6px 14px !important; border-radius: 9999px !important;
+  text-transform: uppercase !important;
+}
+
+/* ──────── CART PAGE ──────── */
+
+/* The /cart-view table has no CSS class — key the treatment on the page
+   class alone. Keep rows as horizontally scrollable table styled by the
+   generic table rules; just polish spacing and the footer bar. */
+body.slp-page-cart table {
+  margin-top: 12px !important;
+}
+body.slp-page-cart .view-cart-footer {
+  background: var(--slp-surface-low) !important;
+  border-radius: var(--slp-radius-md) !important;
+  box-shadow: var(--slp-shadow-1) !important;
+  padding: 14px 16px !important;
+  margin: 12px 0 !important;
+  border: none !important;
+}
+
+/* Quantity inputs — larger touch target, centered */
+body.slp-page-cart input.qty,
+body.slp-page-cart .quantity input.qty,
+body.slp-page-cart input[type="number"].qty {
+  min-height: 44px !important; min-width: 44px !important;
+  max-width: 70px !important; text-align: center !important;
+  font-size: 15px !important; font-weight: 600 !important;
+  padding: 8px !important; margin-bottom: 0 !important;
+}
+
+/* Remove button — subtle red outline */
+body.slp-page-cart a.remove,
+body.slp-page-cart td.product-remove a {
+  display: inline-flex !important; align-items: center !important;
+  justify-content: center !important; width: 32px !important; height: 32px !important;
+  border-radius: var(--slp-radius-sm) !important; border: 1px solid var(--slp-error) !important;
+  color: var(--slp-error) !important; background: transparent !important;
+  font-size: 16px !important; font-weight: 700 !important; text-decoration: none !important;
+  transition: all var(--slp-dur) var(--slp-ease) !important;
+}
+body.slp-page-cart a.remove:hover {
+  background: var(--slp-error) !important; color: white !important;
+}
+
+/* Cart totals row — bold with gold top border */
+body.slp-page-cart .order-total td,
+body.slp-page-cart tr.order-total td,
+body.slp-page-cart .cart-collaterals .order-total td {
+  font-weight: 800 !important; font-size: 16px !important;
+  color: var(--slp-on-surface) !important;
+  border-top: 2px solid var(--slp-secondary) !important; padding-top: 18px !important;
+}
+
+/* Empty cart — centered and friendly */
+body.slp-page-cart .cart-empty,
+body.slp-page-cart .woocommerce-info,
+body.slp-page-cart p.cart-empty {
+  text-align: center !important; padding: 40px 20px !important;
+  font-size: 16px !important; color: var(--slp-outline) !important;
+  font-weight: 500 !important; border-radius: var(--slp-radius-md) !important; background: var(--slp-surface-c-l) !important;
+}
+
+/* Checkout button — full-width, large, prominent */
+body.slp-page-cart .checkout-button,
+body.slp-page-cart .wc-proceed-to-checkout a,
+body.slp-page-cart a.button.checkout-button {
+  display: block !important; width: 100% !important;
+  padding: 18px 28px !important; font-size: 17px !important;
+  font-weight: 800 !important; text-align: center !important;
+  border-radius: var(--slp-radius-md) !important;
+  background: linear-gradient(135deg, var(--slp-primary) 0%, var(--slp-primary-c) 100%) !important;
+  color: var(--slp-on-primary) !important; border: none !important;
+  box-shadow: 0 4px 16px rgba(124,0,26,.25) !important;
+  margin-top: 16px !important; letter-spacing: .4px !important;
+  transition: all var(--slp-dur) var(--slp-ease) !important;
+  text-transform: none !important;
+}
+body.slp-page-cart .checkout-button:active {
+  transform: scale(0.97) !important;
+}
+
+/* ──────── CHECKOUT PAGE ──────── */
+
+/* Form sections — card-style containers */
+body.slp-page-checkout .woocommerce-billing-fields,
+body.slp-page-checkout .woocommerce-shipping-fields,
+body.slp-page-checkout .woocommerce-additional-fields,
+body.slp-page-checkout .col2-set .col-1,
+body.slp-page-checkout .col2-set .col-2 {
+  border-radius: var(--slp-radius-md) !important; box-shadow: var(--slp-shadow-2) !important;
+  background: var(--slp-surface-low) !important; padding: 20px !important;
+  margin-bottom: 16px !important; border: 1px solid var(--slp-outline-var) !important;
+}
+
+/* Required field indicators — crimson asterisk */
+body.slp-page-checkout label.required::after,
+body.slp-page-checkout .required::after,
+body.slp-page-checkout abbr.required {
+  content: " *" !important; color: var(--slp-error) !important;
+  font-weight: 700 !important; text-decoration: none !important; border: none !important;
+}
+
+/* Place order button — extra large, full-width */
+body.slp-page-checkout #place_order,
+body.slp-page-checkout .place-order-button {
+  display: block !important; width: 100% !important;
+  padding: 18px 32px !important; font-size: 18px !important;
+  font-weight: 800 !important; letter-spacing: .5px !important;
+  border-radius: var(--slp-radius-md) !important;
+  background: linear-gradient(135deg, var(--slp-primary) 0%, var(--slp-primary-c) 100%) !important;
+  color: var(--slp-on-primary) !important; border: none !important;
+  box-shadow: 0 6px 20px rgba(124,0,26,.3) !important;
+  margin-top: 20px !important; text-transform: none !important;
+  transition: all var(--slp-dur) var(--slp-ease) !important;
+}
+body.slp-page-checkout #place_order:active {
+  transform: scale(0.97) !important;
+}
+
+/* ──────── LOGIN / REGISTER PAGES ──────── */
+
+/* Form container — centered card */
+body.slp-page-login form,
+body.slp-page-login .login-form,
+body.slp-page-login .woocommerce-form-login,
+body.slp-page-register form,
+body.slp-page-register .register-form,
+body.slp-page-register .woocommerce-form-register {
+  max-width: 440px !important; margin: 24px auto !important;
+  padding: 32px 28px !important; border-radius: var(--slp-radius-lg) !important;
+  background: var(--slp-surface-low) !important;
+  box-shadow: var(--slp-shadow-2) !important;
+}
+
+/* Submit — full-width within card */
+body.slp-page-login input[type="submit"],
+body.slp-page-login button[type="submit"],
+body.slp-page-register input[type="submit"],
+body.slp-page-register button[type="submit"] {
+  width: 100% !important; margin-top: 8px !important;
+}
+
+/* Forgot password — subtle, right-aligned */
+body.slp-page-login .lost_password,
+body.slp-page-login .forgot-password,
+body.slp-page-login a.lost-password {
+  text-align: right !important; font-size: 12px !important;
+  font-weight: 500 !important; color: var(--slp-outline) !important;
+  display: block !important; margin-top: 4px !important;
+}
+
+/* ──────── ACCOUNT PAGE ──────── */
+
+/* Order history and profile sections — card containers */
+body.slp-page-account .order-history table,
+body.slp-page-account .woocommerce-MyAccount-content table,
+body.slp-page-account table.orders,
+body.slp-page-account .profile-section,
+body.slp-page-account .account-section {
+  border-radius: var(--slp-radius-md) !important; box-shadow: var(--slp-shadow-2) !important;
+  background: var(--slp-surface-low) !important; padding: 20px !important;
+  margin-bottom: 16px !important; border: 1px solid var(--slp-outline-var) !important;
+}
+
+/* ──────── FULLSCREEN IMAGE OVERLAY ──────── */
+.slp-image-overlay {
+  position: fixed !important; top: 0 !important; left: 0 !important;
+  width: 100% !important; height: 100% !important;
+  background: rgba(0,0,0,.9) !important; z-index: 99999 !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  animation: slpFadeIn .2s var(--slp-ease) !important;
+}
+.slp-image-overlay img {
+  max-width: 95% !important; max-height: 90% !important;
+  object-fit: contain !important; border-radius: 8px !important;
+}
+
+/* ──────── PASSWORD TOGGLE BUTTON ──────── */
+.slp-pw-toggle {
+  position: absolute !important; right: 12px !important; top: 50% !important;
+  transform: translateY(-50%) !important; background: none !important;
+  border: none !important; color: var(--slp-outline) !important;
+  font-size: 13px !important; font-weight: 600 !important;
+  cursor: pointer !important; padding: 8px !important;
+  -webkit-appearance: none !important; appearance: none !important;
+}
+
+/* ──────── PASSWORD STRENGTH INDICATOR ──────── */
+.slp-pw-strength {
+  height: 4px !important; border-radius: 2px !important;
+  margin-top: 6px !important; transition: all .3s var(--slp-ease) !important;
+}
+.slp-pw-strength.weak   { width: 30% !important; background: var(--slp-error) !important; }
+.slp-pw-strength.medium { width: 60% !important; background: var(--slp-secondary) !important; }
+.slp-pw-strength.strong { width: 100% !important; background: var(--slp-success) !important; }
+
+/* ──────── QUANTITY STEPPER ──────── */
+.slp-qty-stepper {
+  display: inline-flex !important; align-items: center !important; gap: 0 !important;
+  border-radius: 8px !important; overflow: hidden !important;
+  border: 1px solid var(--slp-outline-var) !important;
+}
+.slp-qty-stepper button {
+  width: 36px !important; height: 36px !important; border: none !important;
+  background: var(--slp-surface-c-h) !important; color: var(--slp-on-surface) !important;
+  font-size: 18px !important; cursor: pointer !important; display: flex !important;
+  align-items: center !important; justify-content: center !important;
+}
+.slp-qty-stepper input {
+  width: 48px !important; text-align: center !important; border: none !important;
+  border-left: 1px solid var(--slp-outline-var) !important;
+  border-right: 1px solid var(--slp-outline-var) !important;
+  border-radius: 0 !important; margin: 0 !important; padding: 0 !important;
+  font-size: 15px !important; font-weight: 600 !important;
+}
+
+/* ──────── SWIPE DELETE ──────── */
+.slp-swipe-delete {
+  position: absolute !important; right: 0 !important; top: 0 !important;
+  height: 100% !important; width: 80px !important;
+  background: var(--slp-error) !important; color: white !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  font-size: 13px !important; font-weight: 700 !important;
+  border-radius: 0 var(--slp-radius-md) var(--slp-radius-md) 0 !important;
+}
+
+/* ──────── PAGE-SPECIFIC RESPONSIVE ──────── */
+
+/* Product detail: larger image on tablet+ */
+@media (min-width: 768px) {
+  body.slp-page-product-detail img.thumbnail,
+  body.slp-page-product-detail .main-image img,
+  body.slp-page-product-detail .product-image img,
+  body.slp-page-product-detail .image img {
+    max-height: 400px !important;
+  }
+}
+
+/* Product detail: sticky add-to-cart on mobile */
+@media (max-width: 767px) {
+  body.slp-page-product-detail .btn-success,
+  body.slp-page-product-detail .add_to_cart_button,
+  body.slp-page-product-detail .single_add_to_cart_button {
+    position: sticky !important; bottom: 0 !important; z-index: 10 !important;
+    border-radius: var(--slp-radius-md) var(--slp-radius-md) 0 0 !important;
+    margin-bottom: 0 !important;
+    box-shadow: 0 -2px 12px rgba(28,27,28,.15) !important;
+  }
+}
+
+/* Login/Register: reduce card padding on small mobile */
+@media (max-width: 480px) {
+  body.slp-page-login form,
+  body.slp-page-login .login-form,
+  body.slp-page-register form,
+  body.slp-page-register .register-form {
+    padding: 24px 18px !important; margin: 16px auto !important;
+  }
 }
