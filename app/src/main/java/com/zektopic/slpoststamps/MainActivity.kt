@@ -5,6 +5,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.util.Base64
+import android.util.Log
 import android.view.MenuItem
 import android.view.View
 import android.webkit.WebChromeClient
@@ -15,33 +17,112 @@ import android.webkit.WebViewClient
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.GravityCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.zektopic.slpoststamps.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
 
+    companion object {
+        private const val TAG = "MainActivity"
+    }
+
     private lateinit var binding: ActivityMainBinding
-    private val TARGET_URL = "https://stamps.slpost.gov.lk/"
-    private val TARGET_DOMAIN = "slpost.gov.lk" // Broader domain catch
+    private val TARGET_URL    = "https://stamps.slpost.gov.lk/"
+    private val LOGIN_URL     = "https://stamps.slpost.gov.lk/login"
+    // GET /users/register returns an empty page — registration is an inline
+    // block (#registetModal) on /login, which inject.js scrolls to via hash.
+    private val REGISTER_URL  = "https://stamps.slpost.gov.lk/login#registetModal"
+    private val LOGOUT_URL    = "https://stamps.slpost.gov.lk/logout/"
+    private val TARGET_DOMAIN = "slpost.gov.lk"
+
+    private var accountUrl: String = "https://stamps.slpost.gov.lk/users/"
+    private var firstLoadDismissed = false
+    private var isUserLoggedIn = false
+    private var currentPageType: PageType = PageType.UNKNOWN
+    private var cartItemCount: Int = 0
+
+    private lateinit var contentBridge: WebContentBridge
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Set Toolbar as Action Bar for the Drawer Sidebar toggle icon handling
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars     = true
+            isAppearanceLightNavigationBars = true
+        }
+
         setSupportActionBar(binding.toolbar)
 
+        setupContentBridge()
         setupDrawer()
         setupWebView()
         setupSwipeRefresh()
+        setupBottomNav()
         setupBackButtonHandler()
         setupRetryButton()
 
-        // Load the initial URL into the WebWrapper
         binding.webView.loadUrl(TARGET_URL)
+    }
+
+    private fun setupContentBridge() {
+        contentBridge = WebContentBridge(
+            onPageDetected = { type, _ ->
+                currentPageType = type
+                updateToolbarForPageType(type)
+            },
+            onAuthStateChanged = { isLoggedIn, url ->
+                if (url.contains("/users/view/")) {
+                    accountUrl = url
+                }
+                runOnUiThread { updateAuthMenuState(isLoggedIn) }
+            },
+            onCartUpdated = { count ->
+                cartItemCount = count
+                runOnUiThread { updateCartBadge(count) }
+            },
+            onProductViewed = { title, _, _ ->
+                runOnUiThread {
+                    if (title.isNotBlank()) {
+                        binding.toolbar.subtitle = title.take(46)
+                    }
+                }
+            }
+        )
+    }
+
+    private fun updateToolbarForPageType(type: PageType) {
+        val subtitle = when (type) {
+            PageType.HOME             -> "OFFICIAL PHILATELIC BUREAU"
+            PageType.PRODUCT_LISTING  -> "Browse Stamps"
+            PageType.PRODUCT_DETAIL   -> binding.toolbar.subtitle ?: "Product Details"
+            PageType.CART             -> "Shopping Cart"
+            PageType.CHECKOUT         -> "Checkout"
+            PageType.LOGIN            -> "Sign In"
+            PageType.REGISTER         -> "Create Account"
+            PageType.ACCOUNT          -> "My Account"
+            PageType.STATIC           -> "Information"
+            PageType.UNKNOWN          -> binding.toolbar.subtitle ?: "OFFICIAL PHILATELIC BUREAU"
+        }
+        binding.toolbar.subtitle = subtitle
+    }
+
+    private fun updateCartBadge(count: Int) {
+        val badge = binding.bottomNavView.getOrCreateBadge(R.id.nav_cart)
+        if (count > 0) {
+            badge.number = count
+            badge.isVisible = true
+        } else {
+            badge.isVisible = false
+        }
     }
 
     private fun setupDrawer() {
@@ -54,52 +135,46 @@ class MainActivity : AppCompatActivity() {
 
         binding.navigationView.setNavigationItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.navigation_home -> {
-                    // Navigate to Home
-                    binding.webView.loadUrl(TARGET_URL)
-                }
-                R.id.navigation_shop -> {
-                    // Navigate to the categories hash or just the base url (which is the shop)
-                    binding.webView.loadUrl(TARGET_URL)
-                }
-                R.id.navigation_cart -> {
-                    // Navigate to cart URL or trigger the native view-cart icon via javascript
-                    val triggerCartJS = "document.querySelector('.view-cart-button')?.click();"
-                    binding.webView.evaluateJavascript(triggerCartJS, null)
-                }
+                R.id.navigation_login -> binding.webView.loadUrl(LOGIN_URL)
+                R.id.navigation_signup -> binding.webView.loadUrl(REGISTER_URL)
+                R.id.navigation_account -> binding.webView.loadUrl(accountUrl)
+                R.id.navigation_logout -> binding.webView.loadUrl(LOGOUT_URL)
+                R.id.navigation_payment_methods -> binding.webView.loadUrl("${TARGET_URL}payment-methods")
+                R.id.navigation_standing_order -> binding.webView.loadUrl("${TARGET_URL}how-to-create-standing-order")
+                R.id.navigation_downloads -> binding.webView.loadUrl("${TARGET_URL}downloads")
+                R.id.navigation_general_info -> binding.webView.loadUrl("${TARGET_URL}general-infor")
+                R.id.navigation_terms -> binding.webView.loadUrl("${TARGET_URL}terms-and-conditions/")
+                R.id.navigation_contact -> binding.webView.loadUrl("${TARGET_URL}contact-us/")
             }
-            // Close sidebar after tapping an item
             binding.drawerLayout.closeDrawer(GravityCompat.START)
             true
         }
     }
 
     private fun setupWebView() {
-        // Enable necessary settings for modern rendering and functions
+        binding.webView.setBackgroundColor(ContextCompat.getColor(this, R.color.md_background))
+        binding.webView.overScrollMode = WebView.OVER_SCROLL_NEVER
+
         binding.webView.settings.apply {
             javaScriptEnabled = true
-            domStorageEnabled = true // Essential for the shopping cart and modern JS frameworks
+            domStorageEnabled = true
             setSupportZoom(true)
             builtInZoomControls = true
-            displayZoomControls = false // Hide the clunky native zoom buttons
-            
-            // Fix for Android blank white screens due to mixed external assets and APIs
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-            }
+            displayZoomControls = false
+            mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
+
+        binding.webView.addJavascriptInterface(contentBridge, "SLPBridge")
 
         binding.webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url?.toString() ?: return false
                 val host = Uri.parse(url).host
-                
+
                 if (url.startsWith("http://") || url.startsWith("https://")) {
-                    // Keep navigation inside the app domain safely, avoiding system browser kicks and bugs
                     if (host != null && host.contains(TARGET_DOMAIN)) {
-                        return false // Let WebView handle it natively
+                        return false
                     } else {
-                        // External links: pop them out safely via intents so we do not break internal routing or get stuck on white screens
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                         startActivity(intent)
                         return true
@@ -109,76 +184,52 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onReceivedSslError(view: WebView?, handler: android.webkit.SslErrorHandler?, error: android.net.http.SslError?) {
-                // To avoid white screen completely if slpost's domain ssl cert is weakly configured or expired
                 handler?.proceed()
             }
 
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
-                // Show ProgressBar visually
                 binding.progressBar.visibility = View.VISIBLE
                 binding.errorView.visibility = View.GONE
                 binding.swipeRefreshLayout.visibility = View.VISIBLE
             }
 
+            override fun onPageCommitVisible(view: WebView?, url: String?) {
+                super.onPageCommitVisible(view, url)
+                // The new document exists but hasn't been drawn yet — injecting
+                // here styles the page before the raw site is ever visible.
+                injectAssetCss(view, "inject.css")
+                injectPageDetector(view)
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                // Stop pull-to-refresh spinner
                 binding.swipeRefreshLayout.isRefreshing = false
-                
-                // Inject Custom CSS safely via single-line escaped strings to prevent Webkit Syntax breaking the screen
-                val materialCSS = """
-                    #header, #footer { display: none !important; }
-                    /* Material UI overrides for Auth Forms */
-                    #loginModal .modal-content, #registetModal .modal-content, .modal-content.boxshadownone {
-                        border-radius: 16px !important; border: none !important;
-                        box-shadow: 0 4px 24px rgba(0,0,0,0.08) !important;
-                        padding: 24px !important; margin: 16px auto !important;
-                        background: #ffffff !important;
-                    }
-                    .modal-header { border-bottom: none !important; text-align: center !important; padding-top: 0 !important; }
-                    .modal-title { font-family: sans-serif !important; font-weight: 600 !important; color: #212121 !important; font-size: 26px !important; margin-bottom: 8px !important; }
-                    .input, select.form-control, input.form-control {
-                        width: 100% !important; padding: 14px 16px !important; margin-bottom: 16px !important;
-                        border: 1px solid #e0e0e0 !important; border-radius: 8px !important;
-                        box-sizing: border-box !important; font-size: 16px !important;
-                        background-color: #fafafa !important; outline: none !important;
-                        color: #212121 !important;
-                    }
-                    .input:focus, select.form-control:focus, input.form-control:focus { border-color: #6200EE !important; background-color: #fff !important; }
-                    #login-btn, input.button.raised.blue {
-                        background-color: #6200EE !important; color: white !important; border: none !important;
-                        border-radius: 24px !important; padding: 14px 24px !important; font-size: 16px !important;
-                        font-weight: bold !important; letter-spacing: 0.5px !important; text-transform: uppercase !important;
-                        width: 100% !important; margin-top: 16px !important; margin-bottom: 16px !important;
-                        box-shadow: 0 4px 10px rgba(98, 0, 238, 0.3) !important; appearance: none !important;
-                    }
-                    .register-now { text-align: center !important; font-size: 14px !important; margin-top: 10px !important; color: #757575 !important; }
-                    .register-now a { color: #6200EE !important; text-decoration: none !important; font-weight: bold !important; }
-                    .terms-and-conditions .dec-section {
-                        border-radius: 8px !important; border: 1px solid #eeeeee !important;
-                        background: #fafafa !important; padding: 12px !important; margin-bottom: 16px !important;
-                    }
-                    #terms-and-conditions-heading h4 { font-size: 14px !important; font-weight: bold !important; color: #424242 !important; }
-                    label[for="remember_me"], label[for="agree"] { font-size: 14px !important; color: #616161 !important; font-weight: normal !important; margin-left: 8px !important; vertical-align: middle !important; }
-                    input[type="checkbox"] { width: 18px !important; height: 18px !important; accent-color: #6200EE !important; vertical-align: middle !important; }
-                """.trimIndent().replace("\n", " ").replace("\"", "\\\"")
 
-                val cssOverride = """
-                    var style = document.createElement('style');
-                    style.innerHTML = "$materialCSS";
-                    document.head.appendChild(style);
-                """.trimIndent()
-                
-                view?.evaluateJavascript(
-                    "(function() { $cssOverride })();",
-                    null
-                )
+                // Re-inject CSS to override any late-loaded site styles
+                injectAssetCss(view, "inject.css")
+
+                // Inject combined JS: page detector first, then UX enhancements.
+                // Combined into a single evaluateJavascript call so page detection
+                // runs and sets window.__SLP_PAGE_TYPE__ before inject.js reads it.
+                injectCombinedJs(view)
+
+                // Keep bottom nav in sync with the current URL
+                syncBottomNavToUrl(url)
+
+                if (!firstLoadDismissed) {
+                    firstLoadDismissed = true
+                    binding.loadingOverlay.animate()
+                        .alpha(0f)
+                        .setDuration(600)
+                        .setStartDelay(300)
+                        .withEndAction { binding.loadingOverlay.visibility = View.GONE }
+                        .start()
+                }
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 super.onReceivedError(view, request, error)
-                // Only intercept main frame errors (prevents broken images killing the whole view)
                 if (request?.isForMainFrame == true) {
                     binding.swipeRefreshLayout.visibility = View.GONE
                     binding.errorView.visibility = View.VISIBLE
@@ -190,49 +241,205 @@ class MainActivity : AppCompatActivity() {
         binding.webView.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 super.onProgressChanged(view, newProgress)
-                // Tie progress visually to horizontal bar
                 binding.progressBar.progress = newProgress
-                if (newProgress == 100) {
-                    binding.progressBar.visibility = View.GONE
-                } else {
-                    binding.progressBar.visibility = View.VISIBLE
+                binding.progressBar.visibility = if (newProgress == 100) View.GONE else View.VISIBLE
+            }
+
+            override fun onReceivedTitle(view: WebView?, title: String?) {
+                super.onReceivedTitle(view, title)
+                // Only override if the bridge hasn't already set a page-type-aware subtitle
+                if (currentPageType == PageType.UNKNOWN || currentPageType == PageType.HOME) {
+                    val url = view?.url ?: ""
+                    val isHome = url.trimEnd('/') == TARGET_URL.trimEnd('/')
+                    val subtitle = when {
+                        isHome || title.isNullOrBlank() -> "OFFICIAL PHILATELIC BUREAU"
+                        title.length > 46               -> title.take(43) + "…"
+                        else                            -> title
+                    }
+                    binding.toolbar.subtitle = subtitle
                 }
             }
         }
     }
 
     private fun setupSwipeRefresh() {
-        // Standard pull-to-refresh
+        binding.swipeRefreshLayout.setColorSchemeColors(
+            ContextCompat.getColor(this, R.color.md_primary),
+            ContextCompat.getColor(this, R.color.md_secondary),
+            ContextCompat.getColor(this, R.color.md_tertiary)
+        )
+        binding.swipeRefreshLayout.setProgressBackgroundColorSchemeColor(
+            ContextCompat.getColor(this, R.color.md_surface)
+        )
         binding.swipeRefreshLayout.setOnRefreshListener {
             binding.webView.reload()
         }
     }
 
     private fun setupBackButtonHandler() {
-        // Intercept native Back button
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
-                    // Close sidebar if open
                     binding.drawerLayout.closeDrawer(GravityCompat.START)
                 } else if (binding.webView.canGoBack()) {
-                    // Perform Web History back navigation
                     binding.webView.goBack()
                 } else {
-                    // Remove intercept, default system behavior
                     isEnabled = false
                     onBackPressedDispatcher.onBackPressed()
                 }
             }
         })
     }
-    
+
+    private fun setupBottomNav() {
+        binding.bottomNavView.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_home -> binding.webView.loadUrl(TARGET_URL)
+
+                R.id.nav_browse -> browseCatalog()
+
+                R.id.nav_cart -> navigateToCart()
+
+                R.id.nav_account -> {
+                    if (isUserLoggedIn) binding.webView.loadUrl(accountUrl)
+                    else               binding.webView.loadUrl(LOGIN_URL)
+                }
+            }
+            true
+        }
+
+        binding.bottomNavView.setOnItemReselectedListener { /* no-op */ }
+    }
+
+    private fun navigateToCart() {
+        binding.webView.loadUrl("https://stamps.slpost.gov.lk/cart-view")
+    }
+
+    /**
+     * Browse = the product catalog section on the home page. If we're already
+     * there, scroll to it; otherwise load home with the #slp-browse hash that
+     * inject.js scrolls to after the page renders.
+     */
+    private fun browseCatalog() {
+        val js = """(function(){
+            if (location.pathname !== '/') return 'navigate';
+            var t = document.querySelector('.nav-tabs, .features_items, .catagories-heading');
+            if (!t) return 'navigate';
+            t.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return 'scrolled';
+        })();"""
+        binding.webView.evaluateJavascript(js) { result ->
+            if (result == null || !result.contains("scrolled")) {
+                binding.webView.loadUrl("$TARGET_URL#slp-browse")
+            }
+        }
+    }
+
+    private fun syncBottomNavToUrl(url: String?) {
+        val u = url ?: return
+        val id = when {
+            u.contains("/orders") || u.contains("/cart")   -> R.id.nav_cart
+            u.contains("/users/") || u.contains("/login")  -> R.id.nav_account
+            else                                           -> R.id.nav_home
+        }
+        binding.bottomNavView.setOnItemSelectedListener(null)
+        binding.bottomNavView.selectedItemId = id
+        setupBottomNav()
+    }
+
     private fun setupRetryButton() {
-        // Error screen retry logic
         binding.retryButton.setOnClickListener {
             binding.errorView.visibility = View.GONE
             binding.swipeRefreshLayout.visibility = View.VISIBLE
             binding.webView.reload()
+        }
+    }
+
+    // ── Auth state is now driven by the bridge (JS → Kotlin) instead of polling ──
+
+    private fun updateAuthMenuState(isLoggedIn: Boolean) {
+        isUserLoggedIn = isLoggedIn
+
+        val menu = binding.navigationView.menu
+        menu.findItem(R.id.navigation_login)?.isVisible   = !isLoggedIn
+        menu.findItem(R.id.navigation_signup)?.isVisible  = !isLoggedIn
+        menu.findItem(R.id.navigation_account)?.isVisible = isLoggedIn
+        menu.findItem(R.id.navigation_logout)?.isVisible  = isLoggedIn
+
+        binding.bottomNavView.menu.findItem(R.id.nav_account)?.title =
+            if (isLoggedIn) "Account" else "Login"
+    }
+
+    // ── Asset injection helpers ──
+
+    /**
+     * Injects the stylesheet as a Base64 payload so no character in the CSS
+     * can break the surrounding JS string literal.
+     */
+    private fun injectAssetCss(view: WebView?, filename: String) {
+        val css = readAsset(filename) ?: run {
+            Log.w(TAG, "injectAssetCss: asset $filename not found")
+            return
+        }
+        val b64 = Base64.encodeToString(css.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+        val js = """(function(){
+            try {
+                var css = new TextDecoder('utf-8').decode(
+                    Uint8Array.from(atob('$b64'), function(c){ return c.charCodeAt(0); }));
+                var existing = document.getElementById('slp-injected-css');
+                if (existing) { existing.remove(); }
+                var s = document.createElement('style');
+                s.id = 'slp-injected-css';
+                s.textContent = css;
+                (document.head || document.documentElement).appendChild(s);
+                return 'css-ok';
+            } catch (e) { return 'css-error: ' + e.message; }
+        })();"""
+        view?.evaluateJavascript(js) { result -> Log.d(TAG, "injectAssetCss($filename): $result") }
+    }
+
+    /**
+     * Injects page-detector.js at first paint (onPageCommitVisible) so the
+     * body class (slp-page-*) is set before the user sees the page.
+     */
+    private fun injectPageDetector(view: WebView?) {
+        val js = readAsset("page-detector.js") ?: return
+        injectJsWithLogging(view, js, "page-detector")
+    }
+
+    /**
+     * Combines page-detector.js and inject.js into a single evaluation so that
+     * page detection runs and sets window.__SLP_PAGE_TYPE__ before inject.js
+     * reads it — avoiding async ordering issues between separate evaluateJavascript calls.
+     */
+    private fun injectCombinedJs(view: WebView?) {
+        val detector = readAsset("page-detector.js") ?: ""
+        val inject   = readAsset("inject.js") ?: ""
+        injectJsWithLogging(view, "$detector\n$inject", "combined")
+    }
+
+    /**
+     * Runs the script in an IIFE with a try/catch so failures surface in
+     * logcat (tag MainActivity / WebContentBridge) instead of dying silently.
+     */
+    private fun injectJsWithLogging(view: WebView?, script: String, label: String) {
+        val wrapped = """(function(){
+            try {
+                $script
+                return '$label-ok';
+            } catch (e) {
+                if (window.SLPBridge && SLPBridge.log) { SLPBridge.log('$label error: ' + e.message); }
+                return '$label-error: ' + e.message;
+            }
+        })();"""
+        view?.evaluateJavascript(wrapped) { result -> Log.d(TAG, "inject($label): $result") }
+    }
+
+    private fun readAsset(filename: String): String? {
+        return try {
+            assets.open(filename).bufferedReader().use { it.readText() }
+        } catch (e: Exception) {
+            null
         }
     }
 }

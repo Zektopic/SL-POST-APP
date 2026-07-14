@@ -1,15 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Drawer menu — auth actions only.
+    Primary navigation (Home / Browse / Cart) lives in the bottom nav bar.
+    Visibility is toggled dynamically by detectAndUpdateAuthState() in MainActivity.
+-->
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:id="@+id/navigation_home"
-        android:icon="@drawable/ic_home"
-        android:title="Home" />
-    <item
-        android:id="@+id/navigation_shop"
-        android:icon="@drawable/ic_shop"
-        android:title="Shop" />
-    <item
-        android:id="@+id/navigation_cart"
-        android:icon="@drawable/ic_cart"
-        android:title="Cart" />
+
+    <group android:id="@+id/group_auth_guest">
+        <item
+            android:id="@+id/navigation_login"
+            android:icon="@drawable/ic_login"
+            android:title="Login"
+            android:visible="true" />
+        <item
+            android:id="@+id/navigation_signup"
+            android:icon="@drawable/ic_signup"
+            android:title="Sign Up"
+            android:visible="true" />
+    </group>
+
+    <group android:id="@+id/group_auth_user">
+        <item
+            android:id="@+id/navigation_account"
+            android:icon="@drawable/ic_signup"
+            android:title="My Account"
+            android:visible="false" />
+        <item
+            android:id="@+id/navigation_logout"
+            android:icon="@drawable/ic_logout"
+            android:title="Logout"
+            android:visible="false" />
+    </group>
+
+    <group android:id="@+id/group_info">
+        <item
+            android:id="@+id/navigation_payment_methods"
+            android:icon="@drawable/ic_payment"
+            android:title="Payment Methods" />
+        <item
+            android:id="@+id/navigation_standing_order"
+            android:icon="@drawable/ic_help"
+            android:title="Standing Orders Guide" />
+        <item
+            android:id="@+id/navigation_downloads"
+            android:icon="@drawable/ic_download"
+            android:title="Downloads" />
+        <item
+            android:id="@+id/navigation_general_info"
+            android:icon="@drawable/ic_info"
+            android:title="General Information" />
+        <item
+            android:id="@+id/navigation_terms"
+            android:icon="@drawable/ic_terms"
+            android:title="Terms &amp; Conditions" />
+        <item
+            android:id="@+id/navigation_contact"
+            android:icon="@drawable/ic_contact"
+            android:title="Contact Us" />
+    </group>
+
 </menu>
