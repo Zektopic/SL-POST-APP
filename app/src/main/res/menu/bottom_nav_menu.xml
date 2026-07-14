@@ -32,4 +32,31 @@
             android:visible="false" />
     </group>
 
+    <group android:id="@+id/group_info">
+        <item
+            android:id="@+id/navigation_payment_methods"
+            android:icon="@drawable/ic_payment"
+            android:title="Payment Methods" />
+        <item
+            android:id="@+id/navigation_standing_order"
+            android:icon="@drawable/ic_help"
+            android:title="Standing Orders Guide" />
+        <item
+            android:id="@+id/navigation_downloads"
+            android:icon="@drawable/ic_download"
+            android:title="Downloads" />
+        <item
+            android:id="@+id/navigation_general_info"
+            android:icon="@drawable/ic_info"
+            android:title="General Information" />
+        <item
+            android:id="@+id/navigation_terms"
+            android:icon="@drawable/ic_terms"
+            android:title="Terms &amp; Conditions" />
+        <item
+            android:id="@+id/navigation_contact"
+            android:icon="@drawable/ic_contact"
+            android:title="Contact Us" />
+    </group>
+
 </menu>
