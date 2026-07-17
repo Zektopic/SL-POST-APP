@@ -386,13 +386,21 @@ function relocateLoginForm() {
   if (location.hash.indexOf('registetModal') !== -1 && reg) {
     setTimeout(function () { reg.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200);
   }
+  /* Pre-tick "Remember me" so the site keeps the session alive longer;
+     the user can still untick it before submitting. */
+  var rm = document.getElementById('remember_me');
+  if (rm && !rm.checked && !rm.dataset.slpTouched) {
+    rm.checked = true;
+    rm.dataset.slpTouched = '1';
+  }
 }
 
 function enhanceLogin() {
   relocateLoginForm();
   autoFocusFirst();
   addPwToggles();
-  brCall('onAuthStateChanged', false, '');
+  /* NOTE: no onAuthStateChanged here — page-detector.js reports the real
+     state; hard-coding false overwrote a persisted logged-in session. */
 }
 
 /* ──── REGISTER ──── */
@@ -423,7 +431,6 @@ function enhanceRegister() {
       bar.title = ['', 'Weak', 'Fair', 'Fair', 'Strong', 'Very strong'][s] || '';
     });
   });
-  brCall('onAuthStateChanged', false, '');
 }
 
 /* ──────── RENDER DIAGNOSTICS ──────── */
