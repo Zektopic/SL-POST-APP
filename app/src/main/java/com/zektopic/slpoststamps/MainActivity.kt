@@ -5,10 +5,12 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.content.SharedPreferences
 import android.util.Base64
 import android.util.Log
 import android.view.MenuItem
 import android.view.View
+import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -27,6 +29,12 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
+
+        private const val PREFS_NAME       = "slp_state"
+        private const val KEY_LOGGED_IN    = "logged_in"
+        private const val KEY_ACCOUNT_URL  = "account_url"
+        private const val KEY_CART_COUNT   = "cart_count"
+        private const val KEY_LAST_URL     = "last_url"
     }
 
     private lateinit var binding: ActivityMainBinding
@@ -45,6 +53,7 @@ class MainActivity : AppCompatActivity() {
     private var cartItemCount: Int = 0
 
     private lateinit var contentBridge: WebContentBridge
+    private lateinit var prefs: SharedPreferences
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,6 +71,8 @@ class MainActivity : AppCompatActivity() {
 
         setSupportActionBar(binding.toolbar)
 
+        prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+
         setupContentBridge()
         setupDrawer()
         setupWebView()
@@ -70,7 +81,44 @@ class MainActivity : AppCompatActivity() {
         setupBackButtonHandler()
         setupRetryButton()
 
-        binding.webView.loadUrl(TARGET_URL)
+        // Restore persisted state so the UI is correct before the first page loads
+        accountUrl = prefs.getString(KEY_ACCOUNT_URL, accountUrl) ?: accountUrl
+        updateAuthMenuState(prefs.getBoolean(KEY_LOGGED_IN, false))
+        cartItemCount = prefs.getInt(KEY_CART_COUNT, 0)
+        updateCartBadge(cartItemCount)
+
+        if (savedInstanceState != null) {
+            // Rotation / process recreation: restore the live WebView state
+            // (history, scroll, form input) instead of reloading, and skip
+            // the splash overlay.
+            firstLoadDismissed = true
+            binding.loadingOverlay.visibility = View.GONE
+            if (binding.webView.restoreState(savedInstanceState) == null) {
+                binding.webView.loadUrl(resumeUrl())
+            }
+        } else {
+            binding.webView.loadUrl(resumeUrl())
+        }
+    }
+
+    /** Cold-start URL: resume the last visited on-site page, else home. */
+    private fun resumeUrl(): String {
+        val last = prefs.getString(KEY_LAST_URL, null)
+        return if (last != null && Uri.parse(last).host?.contains(TARGET_DOMAIN) == true) last
+               else TARGET_URL
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        binding.webView.saveState(outState)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Persist the session cookie and the current page so a process kill
+        // doesn't lose the login or the user's place.
+        CookieManager.getInstance().flush()
+        binding.webView.url?.let { prefs.edit().putString(KEY_LAST_URL, it).apply() }
     }
 
     private fun setupContentBridge() {
@@ -83,10 +131,19 @@ class MainActivity : AppCompatActivity() {
                 if (url.contains("/users/view/")) {
                     accountUrl = url
                 }
+                prefs.edit()
+                    .putBoolean(KEY_LOGGED_IN, isLoggedIn)
+                    .putString(KEY_ACCOUNT_URL, accountUrl)
+                    .apply()
+                if (isLoggedIn && !isUserLoggedIn) {
+                    // Just logged in — make sure the session cookie hits disk now
+                    CookieManager.getInstance().flush()
+                }
                 runOnUiThread { updateAuthMenuState(isLoggedIn) }
             },
             onCartUpdated = { count ->
                 cartItemCount = count
+                prefs.edit().putInt(KEY_CART_COUNT, count).apply()
                 runOnUiThread { updateCartBadge(count) }
             },
             onProductViewed = { title, _, _ ->
@@ -163,6 +220,10 @@ class MainActivity : AppCompatActivity() {
             displayZoomControls = false
             mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
         }
+
+        // Session persistence: accept cookies (site login is cookie-based) so
+        // the signed-in session survives app restarts once flushed in onPause.
+        CookieManager.getInstance().setAcceptCookie(true)
 
         binding.webView.addJavascriptInterface(contentBridge, "SLPBridge")
 
