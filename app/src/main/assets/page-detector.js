@@ -109,13 +109,38 @@
         callBridge('onProductViewed', [title, price, imageUrl]);
     }
 
-    function extractCartCount() {
-        var rows = document.querySelectorAll('table tbody tr, tr.cart_item, .cart-item, .cart-row');
-        var count = rows.length || 0;
-        if (window.__slpCartCount === count) return;
-        window.__slpCartCount = count;
-        console.log('[SLP PageDetector] Cart items:', count);
+    /**
+     * Single funnel for the cart count.
+     *
+     * There used to be two reporters - a table-row counter and a badge-text
+     * parser - sharing one window.__slpCartCount cache with incompatible
+     * meanings. The badge scan ran unconditionally after the switch, so on a
+     * cart page it could overwrite what the row counter had just set and
+     * re-fire with a different number: the badge the user saw depended on
+     * which ran last. `source` ranks them so the more reliable one wins.
+     */
+    function reportCartCount(count, source) {
+        var RANK = { badge: 1, table: 2 };
+        var prev = window.__slpCart;
+        if (prev && prev.count === count && prev.source === source) return;
+        // Don't let a page-wide badge guess overwrite an actual cart table.
+        if (prev && RANK[source] < RANK[prev.source] && prev.url === location.href) return;
+        window.__slpCart = { count: count, source: source, url: location.href };
+        console.log('[SLP PageDetector] Cart count:', count, '(' + source + ')');
         callBridge('onCartUpdated', [count]);
+    }
+
+    function extractCartCount() {
+        // Skip <tfoot>, which holds subtotal/shipping/total rows - counting
+        // those inflated the badge.
+        var rows = document.querySelectorAll(
+            'table tbody tr, tr.cart_item, .cart-item, .cart-row'
+        );
+        var count = 0;
+        for (var i = 0; i < rows.length; i++) {
+            if (!rows[i].closest('tfoot')) count++;
+        }
+        reportCartCount(count, 'table');
     }
 
     function extractAuthState() {
@@ -132,13 +157,9 @@
 
     function extractCartBadge() {
         var badge = document.querySelector('.cart-count, .cart-badge, .badge, .items-count, .cart-qty');
-        if (badge) {
-            var count = parseInt((badge.textContent || '0').replace(/\D/g, ''), 10) || 0;
-            if (window.__slpCartCount === count) return;
-            window.__slpCartCount = count;
-            console.log('[SLP PageDetector] Cart badge:', count);
-            callBridge('onCartUpdated', [count]);
-        }
+        if (!badge) return;
+        var count = parseInt((badge.textContent || '0').replace(/\D/g, ''), 10) || 0;
+        reportCartCount(count, 'badge');
     }
 
     // ── Main ─────────────────────────────────────────────────────────────────
@@ -152,15 +173,24 @@
             confidence = 'dom';
         }
 
-        var cssClass = 'slp-page-' + PAGE_TYPES[typeEnum];
+        var cssClass = 'slp-page-' + (PAGE_TYPES[typeEnum] || 'unknown');
 
-        // Tag body
+        // Tag body. Replace any previous slp-page-* class rather than adding
+        // to it: this runs twice per navigation (once at onPageCommitVisible
+        // against a partial DOM, once at onPageFinished), and the two passes
+        // can legitimately disagree - e.g. UNKNOWN first, then
+        // PRODUCT_LISTING once the cards exist. classList.add() alone left
+        // both classes on <body> and applied both CSS blocks at once.
+        function tagBody() {
+            var b = document.body;
+            if (!b) return;
+            b.className = b.className.replace(/\bslp-page-\S+/g, '').trim();
+            b.classList.add(cssClass);
+        }
         if (document.body) {
-            document.body.classList.add(cssClass);
+            tagBody();
         } else {
-            document.addEventListener('DOMContentLoaded', function () {
-                document.body.classList.add(cssClass);
-            });
+            document.addEventListener('DOMContentLoaded', tagBody);
         }
 
         // Store on window
@@ -169,20 +199,31 @@
 
         console.log('[SLP PageDetector] Page: ' + typeEnum + ' (confidence: ' + confidence + ')');
 
-        // Notify native bridge with stringify
-        callBridge('onPageDetected', [
-            typeEnum,
-            JSON.stringify({ url: window.location.href, title: document.title, confidence: confidence })
-        ]);
+        // Only tell native when the answer actually changed for this document.
+        // Both injection points run this file, so an unconditional call
+        // reported every page twice - and each call spends the shared 400-call
+        // bridge budget that the cart and auth callbacks also draw on.
+        var prev = window.__SLP_REPORTED__;
+        if (!prev || prev.type !== typeEnum || prev.url !== window.location.href) {
+            window.__SLP_REPORTED__ = { type: typeEnum, url: window.location.href };
+            callBridge('onPageDetected', [
+                typeEnum,
+                JSON.stringify({ url: window.location.href, title: document.title, confidence: confidence })
+            ]);
+        }
 
         // Context extraction per page type
         switch (typeEnum) {
             case 'PRODUCT_DETAIL': extractProductDetail(); break;
             case 'CART': extractCartCount(); break;
-            case 'LOGIN':
-            case 'REGISTER':
-            case 'ACCOUNT': extractAuthState(); break;
         }
+
+        // Auth state is read on EVERY page, not just LOGIN/REGISTER/ACCOUNT.
+        // Logging out redirects to "/", which classifies as HOME, so gating
+        // this on three page types meant no auth callback ever fired after a
+        // logout and the app stayed "signed in" until the user happened to
+        // land on a login page again.
+        extractAuthState();
 
         // Always scan for cart badge
         extractCartBadge();
