@@ -10,6 +10,7 @@ import android.util.Base64
 import android.util.Log
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Toast
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
@@ -30,6 +31,7 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
+        private const val BRIDGE_NAME = "SLPBridge"
 
         private const val PREFS_NAME       = "slp_state"
         private const val KEY_LOGGED_IN    = "logged_in"
@@ -158,9 +160,40 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         // Persist the session cookie and the current page so a process kill
-        // doesn't lose the login or the user's place.
+        // doesn't lose the login or the user's place. flush() is intentionally
+        // synchronous here: deferring it risks losing the session if the
+        // process is killed immediately after backgrounding.
         CookieManager.getInstance().flush()
         binding.webView.url?.let { prefs.edit().putString(KEY_LAST_URL, it).apply() }
+        // Suspend JS timers, animations and media while backgrounded.
+        binding.webView.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        binding.webView.onResume()
+    }
+
+    /**
+     * Without this the WebView outlives the Activity. It holds the Activity as
+     * its context, and addJavascriptInterface pins a chain of
+     * WebView -> WebContentBridge -> callback lambdas -> MainActivity, so every
+     * configuration change (rotation) leaked an entire Activity and its view
+     * hierarchy.
+     *
+     * The absence of android:configChanges is correct - the missing teardown
+     * was the bug, so do not "fix" this by suppressing recreation instead.
+     */
+    override fun onDestroy() {
+        binding.webView.let { web ->
+            web.removeJavascriptInterface(BRIDGE_NAME)
+            web.stopLoading()
+            web.webChromeClient = null
+            (web.parent as? ViewGroup)?.removeView(web)
+            web.removeAllViews()
+            web.destroy()
+        }
+        super.onDestroy()
     }
 
     private fun setupContentBridge() {
@@ -287,7 +320,7 @@ class MainActivity : AppCompatActivity() {
         // the signed-in session survives app restarts once flushed in onPause.
         CookieManager.getInstance().setAcceptCookie(true)
 
-        binding.webView.addJavascriptInterface(contentBridge, "SLPBridge")
+        binding.webView.addJavascriptInterface(contentBridge, BRIDGE_NAME)
 
         binding.webView.webViewClient = object : WebViewClient() {
             /**
