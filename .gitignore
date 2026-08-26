@@ -13,3 +13,9 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Signing material - must never be committed (see docs/RELEASING.md)
+*.jks
+*.keystore
+*.p12
+*.aab
