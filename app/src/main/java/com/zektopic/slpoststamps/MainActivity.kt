@@ -10,6 +10,7 @@ import android.util.Base64
 import android.util.Log
 import android.view.MenuItem
 import android.view.View
+import android.widget.Toast
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -44,13 +45,16 @@ class MainActivity : AppCompatActivity() {
     // block (#registetModal) on /login, which inject.js scrolls to via hash.
     private val REGISTER_URL  = "https://stamps.slpost.gov.lk/login#registetModal"
     private val LOGOUT_URL    = "https://stamps.slpost.gov.lk/logout/"
-    private val TARGET_DOMAIN = "slpost.gov.lk"
+    private val TARGET_HOST   = "stamps.slpost.gov.lk"
+    private val TARGET_SUFFIX = ".slpost.gov.lk"
+    private val DEFAULT_ACCOUNT_URL = "https://stamps.slpost.gov.lk/users/"
 
-    private var accountUrl: String = "https://stamps.slpost.gov.lk/users/"
+    // Written from the WebView JavaBridge thread, read from the UI thread.
+    @Volatile private var accountUrl: String = DEFAULT_ACCOUNT_URL
     private var firstLoadDismissed = false
-    private var isUserLoggedIn = false
-    private var currentPageType: PageType = PageType.UNKNOWN
-    private var cartItemCount: Int = 0
+    @Volatile private var isUserLoggedIn = false
+    @Volatile private var currentPageType: PageType = PageType.UNKNOWN
+    @Volatile private var cartItemCount: Int = 0
 
     private lateinit var contentBridge: WebContentBridge
     private lateinit var prefs: SharedPreferences
@@ -81,8 +85,12 @@ class MainActivity : AppCompatActivity() {
         setupBackButtonHandler()
         setupRetryButton()
 
-        // Restore persisted state so the UI is correct before the first page loads
-        accountUrl = prefs.getString(KEY_ACCOUNT_URL, accountUrl) ?: accountUrl
+        // Restore persisted state so the UI is correct before the first page loads.
+        // Re-validate on the way out of prefs: a value written by an older build
+        // (or by a hostile page before validation existed) must not be trusted.
+        accountUrl = prefs.getString(KEY_ACCOUNT_URL, null)
+            ?.takeIf { isTrustedUrl(it) }
+            ?: DEFAULT_ACCOUNT_URL
         updateAuthMenuState(prefs.getBoolean(KEY_LOGGED_IN, false))
         cartItemCount = prefs.getInt(KEY_CART_COUNT, 0)
         updateCartBadge(cartItemCount)
@@ -101,11 +109,45 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * True only for the storefront host or a real subdomain of it.
+     *
+     * Substring matching (`host.contains("slpost.gov.lk")`) is NOT sufficient:
+     * it also accepts attacker-controlled hosts such as
+     * `slpost.gov.lk.example.com`, which would then load inside the WebView
+     * with the SLPBridge interface attached.
+     */
+    private fun isTargetHost(host: String?): Boolean {
+        val h = host?.lowercase() ?: return false
+        return h == TARGET_HOST || h.endsWith(TARGET_SUFFIX)
+    }
+
+    /** True only for an https URL on a trusted host. Rejects other schemes outright. */
+    private fun isTrustedUrl(url: String?): Boolean {
+        if (url.isNullOrBlank()) return false
+        val uri = runCatching { Uri.parse(url) }.getOrNull() ?: return false
+        return uri.scheme?.lowercase() == "https" && isTargetHost(uri.host)
+    }
+
+    /**
+     * Hands a URL to whatever app can open it. Guarded: a device with no
+     * handler for the scheme throws ActivityNotFoundException, which would
+     * otherwise take the whole app down.
+     */
+    private fun openExternally(url: String) {
+        val ok = runCatching {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        }.isSuccess
+        if (!ok) {
+            Log.w(TAG, "openExternally: no handler for $url")
+            Toast.makeText(this, R.string.error_no_app_to_open_link, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     /** Cold-start URL: resume the last visited on-site page, else home. */
     private fun resumeUrl(): String {
         val last = prefs.getString(KEY_LAST_URL, null)
-        return if (last != null && Uri.parse(last).host?.contains(TARGET_DOMAIN) == true) last
-               else TARGET_URL
+        return if (isTrustedUrl(last)) last!! else TARGET_URL
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -123,12 +165,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupContentBridge() {
         contentBridge = WebContentBridge(
-            onPageDetected = { type, _ ->
+            pageDetectedCallback = { type, _ ->
                 currentPageType = type
-                updateToolbarForPageType(type)
+                // Bridge callbacks arrive on the WebView JavaBridge thread;
+                // touching a View from there throws CalledFromWrongThreadException.
+                runOnUiThread { updateToolbarForPageType(type) }
             },
-            onAuthStateChanged = { isLoggedIn, url ->
-                if (url.contains("/users/view/")) {
+            authStateChangedCallback = { isLoggedIn, url ->
+                // `url` is page-controlled content. Only adopt it if it is an
+                // https URL on a trusted host AND looks like an account page —
+                // it is persisted and later handed to WebView.loadUrl().
+                if (isTrustedUrl(url) && Uri.parse(url).path?.contains("/users/view/") == true) {
                     accountUrl = url
                 }
                 prefs.edit()
@@ -141,12 +188,12 @@ class MainActivity : AppCompatActivity() {
                 }
                 runOnUiThread { updateAuthMenuState(isLoggedIn) }
             },
-            onCartUpdated = { count ->
+            cartUpdatedCallback = { count ->
                 cartItemCount = count
                 prefs.edit().putInt(KEY_CART_COUNT, count).apply()
                 runOnUiThread { updateCartBadge(count) }
             },
-            onProductViewed = { title, _, _ ->
+            productViewedCallback = { title, _, _ ->
                 runOnUiThread {
                     if (title.isNotBlank()) {
                         binding.toolbar.subtitle = title.take(46)
@@ -228,20 +275,23 @@ class MainActivity : AppCompatActivity() {
         binding.webView.addJavascriptInterface(contentBridge, "SLPBridge")
 
         binding.webView.webViewClient = object : WebViewClient() {
+            /**
+             * Default-deny. Only https on a trusted host stays in the WebView;
+             * off-site http(s) is handed to the browser; every other scheme
+             * (content://, intent://, blob:, file:, …) is dropped.
+             */
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                val url = request?.url?.toString() ?: return false
-                val host = Uri.parse(url).host
+                val uri = request?.url ?: return false
+                val url = uri.toString()
 
-                if (url.startsWith("http://") || url.startsWith("https://")) {
-                    if (host != null && host.contains(TARGET_DOMAIN)) {
-                        return false
-                    } else {
-                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                        startActivity(intent)
-                        return true
-                    }
+                if (isTrustedUrl(url)) return false
+
+                val scheme = uri.scheme?.lowercase()
+                if (scheme == "http" || scheme == "https") {
+                    openExternally(url)
+                    return true
                 }
-                return false
+                return true
             }
 
             override fun onReceivedSslError(view: WebView?, handler: android.webkit.SslErrorHandler?, error: android.net.http.SslError?) {

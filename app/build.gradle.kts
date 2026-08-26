@@ -36,6 +36,13 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    testOptions {
+        unitTests {
+            // android.util.Log is a stub in JVM unit tests; without this it
+            // throws "not mocked" instead of returning a default.
+            isReturnDefaultValues = true
+        }
+    }
 }
 
 dependencies {

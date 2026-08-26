@@ -122,7 +122,10 @@
         var logout = document.querySelector('a[href*="logout"], a[href*="sign-out"]');
         var profile = document.querySelector('a[href*="account"], a[href*="profile"], a[href*="users/view"]');
         var isLoggedIn = !!(logout || profile);
-        var accountUrl = profile ? profile.getAttribute('href') : '';
+        // Use the .href DOM property, not getAttribute('href'): the attribute is
+        // usually relative on this site (/users/view/123), and WebView.loadUrl()
+        // does not resolve a relative path against the current page.
+        var accountUrl = profile ? (profile.href || '') : '';
         console.log('[SLP PageDetector] Auth:', { isLoggedIn: isLoggedIn, accountUrl: accountUrl });
         callBridge('onAuthStateChanged', [isLoggedIn, accountUrl]);
     }
