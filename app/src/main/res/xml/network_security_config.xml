@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Network policy for the storefront.
+
+    base-config: no cleartext anywhere, and trust only the system CA store.
+    Excluding "user" anchors means a CA installed by an MDM profile, a VPN app
+    or a malicious configuration profile cannot transparently intercept the
+    session cookie or the checkout flow.
+
+    NOTE ON PINNING - deliberately not enabled yet.
+    A <pin-set> for stamps.slpost.gov.lk belongs here, but it must contain the
+    real SPKI hashes of the server's *intermediate* CA plus a backup key, and a
+    pin with no rollover path bricks the app the day the certificate is
+    renewed. Generate them against the live host and add the block below:
+
+        <domain-config>
+            <domain includeSubdomains="true">slpost.gov.lk</domain>
+            <pin-set expiration="YYYY-MM-DD">
+                <pin digest="SHA-256">…intermediate SPKI…</pin>
+                <pin digest="SHA-256">…backup key SPKI…</pin>
+            </pin-set>
+        </domain-config>
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

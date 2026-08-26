@@ -265,7 +265,22 @@ class MainActivity : AppCompatActivity() {
             setSupportZoom(true)
             builtInZoomControls = true
             displayZoomControls = false
-            mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+
+            // Never load http subresources into an https page. The platform
+            // default (cleartext blocked) only applies from API 28, and minSdk
+            // here is 24, so this must be set explicitly.
+            mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+
+            // These are already safe by default at targetSdk 36, but pin them
+            // so a future targetSdk change cannot silently reopen them.
+            allowFileAccess = false
+            allowContentAccess = false
+            allowFileAccessFromFileURLs = false
+            allowUniversalAccessFromFileURLs = false
+        }
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            binding.webView.settings.safeBrowsingEnabled = true
         }
 
         // Session persistence: accept cookies (site login is cookie-based) so
@@ -292,10 +307,6 @@ class MainActivity : AppCompatActivity() {
                     return true
                 }
                 return true
-            }
-
-            override fun onReceivedSslError(view: WebView?, handler: android.webkit.SslErrorHandler?, error: android.net.http.SslError?) {
-                handler?.proceed()
             }
 
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
