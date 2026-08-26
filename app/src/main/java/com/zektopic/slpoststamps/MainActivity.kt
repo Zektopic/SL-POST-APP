@@ -290,17 +290,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateToolbarForPageType(type: PageType) {
-        val subtitle = when (type) {
-            PageType.HOME             -> "OFFICIAL PHILATELIC BUREAU"
-            PageType.PRODUCT_LISTING  -> "Browse Stamps"
-            PageType.PRODUCT_DETAIL   -> binding.toolbar.subtitle ?: "Product Details"
-            PageType.CART             -> "Shopping Cart"
-            PageType.CHECKOUT         -> "Checkout"
-            PageType.LOGIN            -> "Sign In"
-            PageType.REGISTER         -> "Create Account"
-            PageType.ACCOUNT          -> "My Account"
-            PageType.STATIC           -> "Information"
-            PageType.UNKNOWN          -> binding.toolbar.subtitle ?: "OFFICIAL PHILATELIC BUREAU"
+        val subtitle: CharSequence = when (type) {
+            PageType.HOME             -> getString(R.string.subtitle_default)
+            PageType.PRODUCT_LISTING  -> getString(R.string.subtitle_browse)
+            PageType.PRODUCT_DETAIL   -> binding.toolbar.subtitle ?: getString(R.string.subtitle_product)
+            PageType.CART             -> getString(R.string.subtitle_cart)
+            PageType.CHECKOUT         -> getString(R.string.subtitle_checkout)
+            PageType.LOGIN            -> getString(R.string.subtitle_login)
+            PageType.REGISTER         -> getString(R.string.subtitle_register)
+            PageType.ACCOUNT          -> getString(R.string.subtitle_account)
+            PageType.STATIC           -> getString(R.string.subtitle_static)
+            PageType.UNKNOWN          -> binding.toolbar.subtitle ?: getString(R.string.subtitle_default)
         }
         binding.toolbar.subtitle = subtitle
     }
@@ -318,7 +318,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupDrawer() {
         val toggle = ActionBarDrawerToggle(
             this, binding.drawerLayout, binding.toolbar,
-            R.string.app_name, R.string.app_name
+            R.string.drawer_open, R.string.drawer_close
         )
         binding.drawerLayout.addDrawerListener(toggle)
         toggle.syncState()
@@ -508,7 +508,7 @@ class MainActivity : AppCompatActivity() {
                     val url = view?.url ?: ""
                     val isHome = url.trimEnd('/') == TARGET_URL.trimEnd('/')
                     val subtitle = when {
-                        isHome || title.isNullOrBlank() -> "OFFICIAL PHILATELIC BUREAU"
+                        isHome || title.isNullOrBlank() -> getString(R.string.subtitle_default)
                         title.length > 46               -> title.take(43) + "…"
                         else                            -> title
                     }
@@ -640,7 +640,7 @@ class MainActivity : AppCompatActivity() {
         menu.findItem(R.id.navigation_logout)?.isVisible  = isLoggedIn
 
         binding.bottomNavView.menu.findItem(R.id.nav_account)?.title =
-            if (isLoggedIn) "Account" else "Login"
+            getString(if (isLoggedIn) R.string.nav_account else R.string.nav_login)
     }
 
 

@@ -19,3 +19,10 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+# The WebView JS bridge is reached only by reflection from page JavaScript, so
+# R8 cannot see the call sites. Without this, enabling minification silently
+# strips or renames these methods: no build error, no stack trace, the bridge
+# simply stops working at runtime. Keep the rule ahead of turning minify on.
+-keepclassmembers class com.zektopic.slpoststamps.WebContentBridge {
+    @android.webkit.JavascriptInterface <methods>;
+}

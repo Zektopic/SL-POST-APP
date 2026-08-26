@@ -47,9 +47,13 @@ android {
             signingConfig = signingConfigs.findByName("release")
         }
     }
+    // One declaration for the whole project. This previously said 11 while
+    // gradle-daemon-jvm.properties said 21, the IDE config said 21, CI used 21
+    // and the README said 11 - four sources, none of them agreeing, and no
+    // toolchain to reconcile them.
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
         viewBinding = true
@@ -71,5 +75,5 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+    implementation(libs.androidx.swiperefreshlayout)
 }

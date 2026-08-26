@@ -264,6 +264,8 @@
             android:background="@color/md_surface_container_lowest"
             app:menu="@menu/bottom_nav"
             app:elevation="8dp"
+            app:itemIconTint="@color/bottom_nav_item"
+            app:itemTextColor="@color/bottom_nav_item"
             app:labelVisibilityMode="labeled" />
 
     </LinearLayout>

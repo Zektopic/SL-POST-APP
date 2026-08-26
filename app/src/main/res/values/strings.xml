@@ -5,4 +5,31 @@
     <string name="download_in_progress">Downloading from SL Post Stamps</string>
     <string name="error_download_failed">Could not start the download</string>
     <string name="error_download_needs_storage">Storage permission is required to save downloads</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_browse">Browse</string>
+    <string name="nav_cart">Cart</string>
+    <string name="nav_account">Account</string>
+    <string name="nav_login">Login</string>
+    <string name="nav_signup">Sign Up</string>
+    <string name="nav_my_account">My Account</string>
+    <string name="nav_logout">Logout</string>
+    <string name="nav_payment_methods">Payment Methods</string>
+    <string name="nav_standing_orders">Standing Orders Guide</string>
+    <string name="nav_downloads">Downloads</string>
+    <string name="nav_general_info">General Information</string>
+    <string name="nav_terms">Terms &amp; Conditions</string>
+    <string name="nav_contact">Contact Us</string>
+    <string name="drawer_open">Open navigation menu</string>
+    <string name="drawer_close">Close navigation menu</string>
+    <string name="subtitle_default">OFFICIAL PHILATELIC BUREAU</string>
+    <string name="subtitle_browse">Browse Stamps</string>
+    <string name="subtitle_product">Product Details</string>
+    <string name="subtitle_cart">Shopping Cart</string>
+    <string name="subtitle_checkout">Checkout</string>
+    <string name="subtitle_login">Sign In</string>
+    <string name="subtitle_register">Create Account</string>
+    <string name="subtitle_account">My Account</string>
+    <string name="subtitle_static">Information</string>
 </resources>

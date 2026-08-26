@@ -10,12 +10,12 @@
         <item
             android:id="@+id/navigation_login"
             android:icon="@drawable/ic_login"
-            android:title="Login"
+            android:title="@string/nav_login"
             android:visible="true" />
         <item
             android:id="@+id/navigation_signup"
             android:icon="@drawable/ic_signup"
-            android:title="Sign Up"
+            android:title="@string/nav_signup"
             android:visible="true" />
     </group>
 
@@ -23,12 +23,12 @@
         <item
             android:id="@+id/navigation_account"
             android:icon="@drawable/ic_signup"
-            android:title="My Account"
+            android:title="@string/nav_my_account"
             android:visible="false" />
         <item
             android:id="@+id/navigation_logout"
             android:icon="@drawable/ic_logout"
-            android:title="Logout"
+            android:title="@string/nav_logout"
             android:visible="false" />
     </group>
 
@@ -36,27 +36,27 @@
         <item
             android:id="@+id/navigation_payment_methods"
             android:icon="@drawable/ic_payment"
-            android:title="Payment Methods" />
+            android:title="@string/nav_payment_methods" />
         <item
             android:id="@+id/navigation_standing_order"
             android:icon="@drawable/ic_help"
-            android:title="Standing Orders Guide" />
+            android:title="@string/nav_standing_orders" />
         <item
             android:id="@+id/navigation_downloads"
             android:icon="@drawable/ic_download"
-            android:title="Downloads" />
+            android:title="@string/nav_downloads" />
         <item
             android:id="@+id/navigation_general_info"
             android:icon="@drawable/ic_info"
-            android:title="General Information" />
+            android:title="@string/nav_general_info" />
         <item
             android:id="@+id/navigation_terms"
             android:icon="@drawable/ic_terms"
-            android:title="Terms &amp; Conditions" />
+            android:title="@string/nav_terms" />
         <item
             android:id="@+id/navigation_contact"
             android:icon="@drawable/ic_contact"
-            android:title="Contact Us" />
+            android:title="@string/nav_contact" />
     </group>
 
 </menu>
