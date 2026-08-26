@@ -1,12 +1,8 @@
 *.iml
 .gradle
 /local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
+# IDE state - per-developer, conflicts on merge
+/.idea/
 .DS_Store
 /build
 /captures
@@ -19,3 +15,9 @@ local.properties
 *.keystore
 *.p12
 *.aab
+
+# Local build logs - capture these as CI artifacts instead
+build_output*.txt
+
+# Kotlin compiler session data
+.kotlin/
