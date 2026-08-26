@@ -4,7 +4,34 @@
    All CSS injected once; detection gates features.
    ================================================ */
 
+(function () {
 'use strict';
+
+/* ──────── RE-ENTRANCY ────────
+   onPageFinished fires again for the same document on fragment navigations,
+   and this app triggers them deliberately (#slp-browse from the Browse tab,
+   /login#registetModal from Sign up). Everything registered at document level
+   therefore has to be guarded, or each re-injection stacks another copy:
+   duplicate ripple dots, N stacked image overlays, a second MutationObserver
+   that is never disconnected, repeated diagnostics sweeps.
+
+   Per-page enhancement below is still allowed to re-run — only one-time
+   global registration goes through slpOnce(). */
+function slpOnce(key, fn) {
+  var flag = '__slpOnce_' + key;
+  if (window[flag]) return;
+  window[flag] = true;
+  try { fn(); } catch (e) {
+    if (window.SLPBridge && window.SLPBridge.log) {
+      try { window.SLPBridge.log('slpOnce(' + key + ') failed: ' + e.message); } catch (ignored) {}
+    }
+  }
+}
+
+/* document.head is absent on some error and non-HTML documents. This is the
+   first statement that touches the DOM, so an unguarded throw here killed the
+   entire file — all 460 lines below it — leaving one logcat line behind. */
+var slpHead = document.head || document.documentElement;
 
 /* ──────── INJECT ALL CSS ──────── */
 var CSS = [
@@ -29,26 +56,32 @@ var CSS = [
   '.slp-pw-btn{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;color:#888;cursor:pointer;font-size:12px;padding:6px 8px;z-index:1}',
   '.slp-pw-bar{height:4px;margin-top:4px;border-radius:2px;transition:width .3s,background .3s;width:0;background:#eee}'
 ].join('\n');
-var cssEl = document.createElement('style');
-cssEl.id = 'slp-css';
+var cssEl = document.getElementById('slp-css');
+if (!cssEl) {
+  cssEl = document.createElement('style');
+  cssEl.id = 'slp-css';
+  slpHead.appendChild(cssEl);
+}
 cssEl.textContent = CSS;
-document.head.appendChild(cssEl);
 
 /* ──────── 1. FIX VIEWPORT ──────── */
 var vp = document.querySelector('meta[name="viewport"]');
-if (!vp) { vp = document.createElement('meta'); vp.name = 'viewport'; document.head.appendChild(vp); }
+if (!vp) { vp = document.createElement('meta'); vp.name = 'viewport'; slpHead.appendChild(vp); }
 vp.content = 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes';
 
 /* ──────── 2. PREVENT DOUBLE-TAP ZOOM ──────── */
 var lastTouchEnd = 0;
-document.addEventListener('touchend', function (e) {
-  var now = Date.now();
-  if (now - lastTouchEnd <= 300) e.preventDefault();
-  lastTouchEnd = now;
-}, false);
+slpOnce('doubleTapZoom', function () {
+  document.addEventListener('touchend', function (e) {
+    var now = Date.now();
+    if (now - lastTouchEnd <= 300) e.preventDefault();
+    lastTouchEnd = now;
+  }, false);
+});
 
 /* ──────── 3. MATERIAL RIPPLE ──────── */
 var RIPPLE_SEL = ['button','.btn','a.button','input[type="submit"]','.add-to-cart','.add_to_cart_button','#login-btn','.btn-success','.btn-primary','.btn-info','.btn-default'].join(',');
+slpOnce('ripple', function () {
 document.addEventListener('click', function (e) {
   var t = e.target.closest(RIPPLE_SEL);
   if (!t) return;
@@ -61,6 +94,7 @@ document.addEventListener('click', function (e) {
   t.appendChild(d);
   setTimeout(function () { d.remove(); }, 550);
 }, false);
+});
 
 /* ──────── 4. SMOOTH IMAGE LOADING ──────── */
 function observeImages(root) {
@@ -68,30 +102,46 @@ function observeImages(root) {
   imgs.forEach(function (img) {
     img.setAttribute('data-slp-obs', '1');
     img.style.transition = 'opacity .35s cubic-bezier(.4,0,.2,1), transform .35s cubic-bezier(.4,0,.2,1)';
-    if (!img.complete || img.naturalWidth === 0) {
-      img.style.opacity = '0';
-      img.style.transform = 'scale(.97)';
-      img.addEventListener('load', function () { img.style.opacity = '1'; img.style.transform = 'scale(1)'; });
-      img.addEventListener('error', function () { img.style.opacity = '.3'; img.style.transform = 'scale(1)'; });
+
+    // Handle the already-settled case first. An image that has ALREADY failed
+    // reports complete === true with naturalWidth === 0, and both its load and
+    // error events have long since fired. The old single condition
+    // (!img.complete || img.naturalWidth === 0) matched it, set opacity to 0,
+    // and then attached listeners that could never run — leaving every broken
+    // thumbnail permanently invisible. inject.js runs at onPageFinished, by
+    // which point most images have already settled, so this was the common case.
+    if (img.complete) {
+      img.style.opacity = img.naturalWidth === 0 ? '.3' : '1';
+      img.style.transform = 'scale(1)';
+      return;
     }
+
+    img.style.opacity = '0';
+    img.style.transform = 'scale(.97)';
+    img.addEventListener('load', function () { img.style.opacity = '1'; img.style.transform = 'scale(1)'; });
+    img.addEventListener('error', function () { img.style.opacity = '.3'; img.style.transform = 'scale(1)'; });
   });
 }
 observeImages(document);
-if (window.MutationObserver && document.body) {
-  new MutationObserver(function (muts) {
-    muts.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType === 1) observeImages(n); }); });
-  }).observe(document.body, { childList: true, subtree: true });
-}
+slpOnce('imageObserver', function () {
+  if (window.MutationObserver && document.body) {
+    new MutationObserver(function (muts) {
+      muts.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType === 1) observeImages(n); }); });
+    }).observe(document.body, { childList: true, subtree: true });
+  }
+});
 
 /* ──────── 5. TOUCH FEEDBACK FOR PRODUCT CARDS ──────── */
 var CARD_SEL = '.thumbnail.cart-thumb, .single-product, .product-item, .product-card';
 function resetCards() { document.querySelectorAll(CARD_SEL).forEach(function (c) { c.style.transform = ''; }); }
-document.addEventListener('touchstart', function (e) {
-  var card = e.target.closest(CARD_SEL);
-  if (card) { card.style.transition = 'transform .15s cubic-bezier(.4,0,.2,1)'; card.style.transform = 'scale(0.97)'; }
-}, { passive: true });
-document.addEventListener('touchend', resetCards, { passive: true });
-document.addEventListener('touchcancel', resetCards, { passive: true });
+slpOnce('cardFeedback', function () {
+  document.addEventListener('touchstart', function (e) {
+    var card = e.target.closest(CARD_SEL);
+    if (card) { card.style.transition = 'transform .15s cubic-bezier(.4,0,.2,1)'; card.style.transform = 'scale(0.97)'; }
+  }, { passive: true });
+  document.addEventListener('touchend', resetCards, { passive: true });
+  document.addEventListener('touchcancel', resetCards, { passive: true });
+});
 
 /* ──────── 6. TAG AUTH PAGES ──────── */
 /* Real auth routes are /login and /users/register (the server redirects
@@ -110,7 +160,7 @@ function dismissPopups() {
   });
 }
 dismissPopups();
-setTimeout(dismissPopups, 1500);
+slpOnce('popupRetry', function () { setTimeout(dismissPopups, 1500); });
 
 /* ──────── 7b. APP NAVIGATION HASHES ──────── */
 /* #slp-browse scrolls to the product catalog (Browse tab);
@@ -134,14 +184,18 @@ if (!window.__slpHashHooked) {
 }
 
 /* ──────── 8. SMOOTH SCROLL ──────── */
-document.addEventListener('click', function (e) {
-  var a = e.target.closest('a[href^="#"]');
-  if (!a) return;
-  var id = a.getAttribute('href');
-  if (!id || id === '#') return;
-  var t = document.querySelector(id);
-  if (t) { e.preventDefault(); t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-}, false);
+slpOnce('smoothScroll', function () {
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('a[href^="#"]');
+    if (!a) return;
+    var id = a.getAttribute('href');
+    if (!id || id === '#') return;
+    // An href like "#!" or "#/route" is not a valid selector and throws.
+    var t = null;
+    try { t = document.querySelector(id); } catch (ignored) { return; }
+    if (t) { e.preventDefault(); t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  }, false);
+});
 
 /* ──────── 9. STAGGER ANIMATION ──────── */
 function staggerCards() {
@@ -194,6 +248,11 @@ function brCall(m, a, b, c) {
 /* ──── SHARED HELPERS ──── */
 
 function autoFocusFirst() {
+  // Only on the first pass for this document: re-injection happens on
+  // fragment navigation, and refocusing then pops the keyboard back up and
+  // yanks the caret out of whatever the user was typing.
+  if (window.__slpAutoFocused) return;
+  window.__slpAutoFocused = true;
   var inputs = document.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], input[type="tel"]');
   for (var i = 0; i < inputs.length; i++) { if (!inputs[i].value) { inputs[i].focus(); break; } }
 }
@@ -306,10 +365,25 @@ function enhanceCart() {
 
   /* Swipe-to-delete on cart rows */
   var sx = 0, sy = 0;
+  slpOnce('swipeDelete', function () {
   document.addEventListener('touchstart', function (e) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
   document.addEventListener('touchend', function (e) {
-    var row = e.target.closest('tr.cart_item, tr');
+    var row = e.target.closest('tr');
     if (!row || row.querySelector('.slp-del')) return;
+
+    // Only offer Remove on a row that carries a real remove control.
+    //
+    // The old selector was 'tr.cart_item, tr' — the bare `tr` matched every
+    // row of every table on the site, including subtotal and total rows. Worse,
+    // the fallback when no control was found was row.remove(), which deleted
+    // the row from the DOM with NO server call: the user saw the item vanish,
+    // the server still had it, and updateCartCount() then reported a count that
+    // matched neither. There is deliberately no local-delete fallback now.
+    var rm = row.querySelector(
+      '.remove a, a.remove, button.remove, a[href*="remove"], a[href*="delete"]'
+    );
+    if (!rm) return;
+
     var dx = e.changedTouches[0].clientX - sx;
     var dy = e.changedTouches[0].clientY - sy;
     if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 2) {
@@ -317,14 +391,14 @@ function enhanceCart() {
       del.className = 'slp-del';
       del.textContent = 'Remove';
       del.addEventListener('click', function () {
-        var rm = row.querySelector('.remove a, a.remove');
-        if (rm) { rm.click(); } else { row.remove(); }
+        rm.click();
         updateCartCount();
       });
       row.appendChild(del);
       setTimeout(function () { if (del.parentNode) del.remove(); }, 4000);
     }
   }, { passive: true });
+  });
 
   /* Prominent cart total at top */
   var totalEl = document.querySelector('.cart-total .amount, .order-total .amount, .cart-subtotal .amount, .woocommerce-Price-amount.amount, .total .amount');
@@ -436,6 +510,8 @@ function enhanceRegister() {
 /* ──────── RENDER DIAGNOSTICS ──────── */
 /* Reports elements that cover the whole viewport plus the effective page
    background — surfaces "black screen" causes in logcat. */
+slpOnce('diagnostics', function () {
+if (!window.__SLP_DIAG__) return;   // opt-in; see MainActivity injectCombinedJs
 setTimeout(function () {
   try {
     var vw = window.innerWidth, vh = window.innerHeight;
@@ -454,6 +530,7 @@ setTimeout(function () {
       ' kids=' + document.body.children.length + ' anim=' + bcs.animationName);
   } catch (e) { brCall('log', 'DIAG failed: ' + e.message); }
 }, 900);
+});
 
 /* ──── DISPATCH BASED ON PAGE TYPE ──── */
 switch (pageType) {
@@ -463,3 +540,5 @@ switch (pageType) {
   case 'LOGIN': enhanceLogin(); break;
   case 'REGISTER': enhanceRegister(); break;
 }
+})();
+

@@ -811,7 +811,15 @@ class MainActivity : AppCompatActivity() {
     private fun injectCombinedJs(view: WebView?) {
         val detector = readAsset("page-detector.js") ?: ""
         val inject   = readAsset("inject.js") ?: ""
-        injectJsWithLogging(view, "$detector\n$inject", "combined")
+        // inject.js runs a getComputedStyle sweep over the whole page and logs
+        // one bridge message per full-viewport element. Useful for chasing a
+        // black screen, far too chatty for release - and it shares the 400-call
+        // bridge budget with the cart and auth callbacks, so left on it can
+        // silently starve them. Opt in on debuggable builds only.
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        val prelude = "window.__SLP_DIAG__ = $debuggable;\n"
+        injectJsWithLogging(view, "$prelude$detector\n$inject", "combined")
     }
 
     /**
