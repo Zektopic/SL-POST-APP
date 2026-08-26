@@ -44,4 +44,8 @@
         vestibulum. Fusce dictum libero quis erat maximus, vitae volutpat diam dignissim.
     </string>
     <string name="error_no_app_to_open_link">No app available to open this link</string>
+    <string name="download_started">Download started</string>
+    <string name="download_in_progress">Downloading from SL Post Stamps</string>
+    <string name="error_download_failed">Could not start the download</string>
+    <string name="error_download_needs_storage">Storage permission is required to save downloads</string>
 </resources>

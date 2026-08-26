@@ -1,10 +1,15 @@
 package com.zektopic.slpoststamps
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.app.DownloadManager
+import android.content.pm.PackageManager
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.content.SharedPreferences
 import android.util.Base64
 import android.util.Log
@@ -13,12 +18,17 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import android.webkit.CookieManager
+import android.webkit.URLUtil
+import android.webkit.ValueCallback
+import android.webkit.WebStorage
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -32,6 +42,16 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "MainActivity"
         private const val BRIDGE_NAME = "SLPBridge"
+
+        /** Schemes handed to another app rather than rendered in the WebView. */
+        private val EXTERNAL_SCHEMES = setOf("mailto", "tel", "sms", "smsto", "geo", "market")
+
+        /**
+         * Path fragments that perform an action on GET. Persisting one of these
+         * as the resume URL would silently repeat the action on next launch.
+         */
+        private val NON_RESUMABLE_PATHS =
+            listOf("/add-to-cart", "/logout", "/remove", "/delete", "/cart-add")
 
         private const val PREFS_NAME       = "slp_state"
         private const val KEY_LOGGED_IN    = "logged_in"
@@ -59,6 +79,23 @@ class MainActivity : AppCompatActivity() {
     @Volatile private var cartItemCount: Int = 0
 
     private lateinit var contentBridge: WebContentBridge
+
+    /** Set while a logout navigation is in flight, so local state is cleared once it settles. */
+    private var pendingLogout = false
+
+    private var filePathCallback: ValueCallback<Array<Uri>>? = null
+    private lateinit var fileChooserLauncher: ActivityResultLauncher<Intent>
+
+    /** Download deferred until the legacy storage permission comes back (API <= 28). */
+    private var pendingDownload: PendingDownload? = null
+    private lateinit var storagePermissionLauncher: ActivityResultLauncher<String>
+
+    private data class PendingDownload(
+        val url: String,
+        val userAgent: String?,
+        val contentDisposition: String?,
+        val mimeType: String?
+    )
     private lateinit var prefs: SharedPreferences
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -79,6 +116,8 @@ class MainActivity : AppCompatActivity() {
 
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
 
+        registerActivityLaunchers()
+
         setupContentBridge()
         setupDrawer()
         setupWebView()
@@ -86,6 +125,7 @@ class MainActivity : AppCompatActivity() {
         setupBottomNav()
         setupBackButtonHandler()
         setupRetryButton()
+        setupDownloads()
 
         // Restore persisted state so the UI is correct before the first page loads.
         // Re-validate on the way out of prefs: a value written by an older build
@@ -146,6 +186,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * True if the URL is safe to reopen on a cold start. This site mutates
+     * state via GET (/add-to-cart, /logout), so replaying the last URL blindly
+     * would re-add items to the cart or sign the user out on next launch.
+     */
+    private fun isResumable(url: String): Boolean {
+        if (!isTrustedUrl(url)) return false
+        val path = Uri.parse(url).path?.lowercase() ?: return false
+        return NON_RESUMABLE_PATHS.none { path.contains(it) }
+    }
+
     /** Cold-start URL: resume the last visited on-site page, else home. */
     private fun resumeUrl(): String {
         val last = prefs.getString(KEY_LAST_URL, null)
@@ -164,7 +215,9 @@ class MainActivity : AppCompatActivity() {
         // synchronous here: deferring it risks losing the session if the
         // process is killed immediately after backgrounding.
         CookieManager.getInstance().flush()
-        binding.webView.url?.let { prefs.edit().putString(KEY_LAST_URL, it).apply() }
+        binding.webView.url
+            ?.takeIf { isResumable(it) }
+            ?.let { prefs.edit().putString(KEY_LAST_URL, it).apply() }
         // Suspend JS timers, animations and media while backgrounded.
         binding.webView.onPause()
     }
@@ -275,7 +328,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.navigation_login -> binding.webView.loadUrl(LOGIN_URL)
                 R.id.navigation_signup -> binding.webView.loadUrl(REGISTER_URL)
                 R.id.navigation_account -> binding.webView.loadUrl(accountUrl)
-                R.id.navigation_logout -> binding.webView.loadUrl(LOGOUT_URL)
+                R.id.navigation_logout -> logOut()
                 R.id.navigation_payment_methods -> binding.webView.loadUrl("${TARGET_URL}payment-methods")
                 R.id.navigation_standing_order -> binding.webView.loadUrl("${TARGET_URL}how-to-create-standing-order")
                 R.id.navigation_downloads -> binding.webView.loadUrl("${TARGET_URL}downloads")
@@ -335,10 +388,16 @@ class MainActivity : AppCompatActivity() {
                 if (isTrustedUrl(url)) return false
 
                 val scheme = uri.scheme?.lowercase()
-                if (scheme == "http" || scheme == "https") {
+                // Off-site web links, and the handful of schemes a content page
+                // legitimately uses, go to the relevant app. Everything else
+                // (intent://, content://, file://, blob:, javascript: …) is
+                // dropped rather than handed back to the WebView, which would
+                // render ERR_UNKNOWN_URL_SCHEME.
+                if (scheme == "http" || scheme == "https" || scheme in EXTERNAL_SCHEMES) {
                     openExternally(url)
                     return true
                 }
+                Log.w(TAG, "shouldOverrideUrlLoading: dropped scheme=$scheme")
                 return true
             }
 
@@ -372,6 +431,10 @@ class MainActivity : AppCompatActivity() {
                 // Keep bottom nav in sync with the current URL
                 syncBottomNavToUrl(url)
 
+                // The logout navigation has settled; the request carried the
+                // session cookie, so it is now safe to clear it locally.
+                clearLocalSession()
+
                 if (!firstLoadDismissed) {
                     firstLoadDismissed = true
                     binding.loadingOverlay.animate()
@@ -386,9 +449,21 @@ class MainActivity : AppCompatActivity() {
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                 super.onReceivedError(view, request, error)
                 if (request?.isForMainFrame == true) {
-                    binding.swipeRefreshLayout.visibility = View.GONE
-                    binding.errorView.visibility = View.VISIBLE
-                    binding.swipeRefreshLayout.isRefreshing = false
+                    showErrorState()
+                }
+            }
+
+            override fun onReceivedHttpError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                errorResponse: android.webkit.WebResourceResponse?
+            ) {
+                super.onReceivedHttpError(view, request, errorResponse)
+                // Without this a 5xx renders the raw server error page inside
+                // the app chrome as though it were a normal screen.
+                val status = errorResponse?.statusCode ?: return
+                if (request?.isForMainFrame == true && status >= 500) {
+                    showErrorState()
                 }
             }
         }
@@ -398,6 +473,32 @@ class MainActivity : AppCompatActivity() {
                 super.onProgressChanged(view, newProgress)
                 binding.progressBar.progress = newProgress
                 binding.progressBar.visibility = if (newProgress == 100) View.GONE else View.VISIBLE
+            }
+
+            override fun onShowFileChooser(
+                webView: WebView?,
+                callback: ValueCallback<Array<Uri>>?,
+                params: FileChooserParams?
+            ): Boolean {
+                // Answer any previous outstanding callback first, otherwise the
+                // WebView refuses to open the picker again.
+                filePathCallback?.onReceiveValue(null)
+                filePathCallback = callback
+
+                val intent = params?.createIntent()
+                if (intent == null) {
+                    filePathCallback = null
+                    return false
+                }
+                return runCatching {
+                    fileChooserLauncher.launch(intent)
+                    true
+                }.getOrElse {
+                    Log.w(TAG, "onShowFileChooser: no picker available", it)
+                    filePathCallback = null
+                    callback?.onReceiveValue(null)
+                    false
+                }
             }
 
             override fun onReceivedTitle(view: WebView?, title: String?) {
@@ -502,6 +603,23 @@ class MainActivity : AppCompatActivity() {
         setupBottomNav()
     }
 
+    /**
+     * onReceivedError previously showed the error view but left the splash
+     * overlay up. loadingOverlay is the last child of the CoordinatorLayout at
+     * match_parent, so it drew over everything - including the retry button -
+     * and was only dismissed in onPageFinished, which may not fire on a failed
+     * first load. Dismissing it here gives the user a way out regardless.
+     */
+    private fun showErrorState() {
+        firstLoadDismissed = true
+        binding.loadingOverlay.visibility = View.GONE
+        binding.swipeRefreshLayout.visibility = View.GONE
+        binding.errorView.visibility = View.VISIBLE
+        binding.swipeRefreshLayout.isRefreshing = false
+        binding.progressBar.visibility = View.GONE
+        clearLocalSession()
+    }
+
     private fun setupRetryButton() {
         binding.retryButton.setOnClickListener {
             binding.errorView.visibility = View.GONE
@@ -523,6 +641,129 @@ class MainActivity : AppCompatActivity() {
 
         binding.bottomNavView.menu.findItem(R.id.nav_account)?.title =
             if (isLoggedIn) "Account" else "Login"
+    }
+
+
+    // ── Activity result plumbing ──
+
+    /**
+     * Both launchers must be registered before the Activity reaches STARTED,
+     * i.e. during onCreate - registering lazily from a WebView callback throws.
+     */
+    private fun registerActivityLaunchers() {
+        fileChooserLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            val cb = filePathCallback
+            filePathCallback = null
+            // Must always be answered, even on cancel: leaving the callback
+            // unanswered permanently disables every later file input.
+            cb?.onReceiveValue(
+                WebChromeClient.FileChooserParams.parseResult(result.resultCode, result.data)
+            )
+        }
+
+        storagePermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            val queued = pendingDownload
+            pendingDownload = null
+            if (granted && queued != null) {
+                enqueueDownload(queued)
+            } else if (!granted) {
+                Toast.makeText(this, R.string.error_download_needs_storage, Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    // ── Downloads ──
+
+    /**
+     * A WebView with no DownloadListener silently ignores download
+     * navigations, which is why the drawer's Downloads section did nothing.
+     */
+    private fun setupDownloads() {
+        binding.webView.setDownloadListener { url, userAgent, contentDisposition, mimeType, _ ->
+            val request = PendingDownload(url, userAgent, contentDisposition, mimeType)
+            if (needsLegacyStoragePermission()) {
+                pendingDownload = request
+                storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            } else {
+                enqueueDownload(request)
+            }
+        }
+    }
+
+    /** Only API <= 28 needs WRITE_EXTERNAL_STORAGE to write to public Downloads. */
+    private fun needsLegacyStoragePermission(): Boolean =
+        Build.VERSION.SDK_INT <= Build.VERSION_CODES.P &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) !=
+            PackageManager.PERMISSION_GRANTED
+
+    private fun enqueueDownload(download: PendingDownload) {
+        // Only download from the storefront - a hostile page must not be able
+        // to make the app fetch arbitrary hosts with the user's cookies.
+        if (!isTrustedUrl(download.url)) {
+            Log.w(TAG, "enqueueDownload: refusing untrusted URL")
+            return
+        }
+        val fileName = URLUtil.guessFileName(
+            download.url, download.contentDisposition, download.mimeType
+        )
+        val ok = runCatching {
+            val request = DownloadManager.Request(Uri.parse(download.url)).apply {
+                setMimeType(download.mimeType)
+                download.userAgent?.let { addRequestHeader("User-Agent", it) }
+                // Carry the session cookie so authenticated receipts and
+                // invoices download as the signed-in user rather than 403ing.
+                CookieManager.getInstance().getCookie(download.url)
+                    ?.let { addRequestHeader("Cookie", it) }
+                setTitle(fileName)
+                setDescription(getString(R.string.download_in_progress))
+                setNotificationVisibility(
+                    DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                )
+                setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+            }
+            (getSystemService(DOWNLOAD_SERVICE) as DownloadManager).enqueue(request)
+        }.isSuccess
+
+        Toast.makeText(
+            this,
+            if (ok) R.string.download_started else R.string.error_download_failed,
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    // ── Logout ──
+
+    /**
+     * Navigating to /logout/ is not enough on its own: the server redirects to
+     * "/", which the detector classifies as HOME, and extractAuthState() only
+     * runs on LOGIN/REGISTER/ACCOUNT - so no auth callback ever arrived and the
+     * app stayed "signed in" forever, including across restarts.
+     *
+     * Local state is therefore reset here rather than waiting on the bridge,
+     * and the cookie jar is cleared once the navigation settles (in
+     * onPageFinished or onReceivedError) so the outbound request still carries
+     * the session cookie the server needs in order to invalidate it.
+     */
+    private fun logOut() {
+        pendingLogout = true
+        binding.webView.loadUrl(LOGOUT_URL)
+        accountUrl = DEFAULT_ACCOUNT_URL
+        cartItemCount = 0
+        prefs.edit().clear().apply()
+        updateAuthMenuState(false)
+        updateCartBadge(0)
+    }
+
+    /** Clears client-side session state. Safe to call more than once. */
+    private fun clearLocalSession() {
+        if (!pendingLogout) return
+        pendingLogout = false
+        CookieManager.getInstance().removeAllCookies { CookieManager.getInstance().flush() }
+        WebStorage.getInstance().deleteAllData()
     }
 
     // ── Asset injection helpers ──
