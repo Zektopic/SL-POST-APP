@@ -56,7 +56,7 @@ editing them:
 
 ## Build requirements
 
-- Android SDK 36
+- Android SDK 37
 - **JDK 17 or newer** (CI uses 21). Gradle 9.3.1 with AGP 9.1 will not run on
   JDK 11.
 

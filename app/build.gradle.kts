@@ -4,11 +4,7 @@ plugins {
 
 android {
     namespace = "com.zektopic.slpoststamps"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.zektopic.slpoststamps"
