@@ -1,354 +1,132 @@
-/* ================================================
-   SL POST STAMPS — MOBILE INJECTION SCRIPT v3
-   UX enhancements + page-aware features.
-   All CSS injected once; detection gates features.
-   ================================================ */
+/* ================================================================
+   SL POST STAMPS - injected behaviour (v4)
+
+   Runs at onPageFinished, after page-detector.js has set
+   window.__SLP_PAGE_TYPE__ and tagged <body>. All styling lives in
+   inject.css; this file only adds behaviour and the few wrapper
+   elements that behaviour needs.
+
+   The page belongs to a third party. Every selector is an assumption
+   about its markup, so each feature looks its elements up defensively
+   and does nothing when they are missing.
+   ================================================================ */
 
 (function () {
 'use strict';
 
 /* ──────── RE-ENTRANCY ────────
-   onPageFinished fires again for the same document on fragment navigations,
-   and this app triggers them deliberately (#slp-browse from the Browse tab,
-   /login#registetModal from Sign up). Everything registered at document level
-   therefore has to be guarded, or each re-injection stacks another copy:
-   duplicate ripple dots, N stacked image overlays, a second MutationObserver
-   that is never disconnected, repeated diagnostics sweeps.
-
-   Per-page enhancement below is still allowed to re-run — only one-time
-   global registration goes through slpOnce(). */
+   onPageFinished fires again for the same document on fragment
+   navigations, and the app triggers them on purpose (#slp-browse from the
+   Browse tab, /login#registetModal from Sign up, #model_<id> when the
+   site opens its add-to-cart sheet). Anything registered at document
+   level goes through slpOnce(); per-element work marks the element it
+   has already handled. */
 function slpOnce(key, fn) {
   var flag = '__slpOnce_' + key;
   if (window[flag]) return;
   window[flag] = true;
-  try { fn(); } catch (e) {
-    if (window.SLPBridge && window.SLPBridge.log) {
-      try { window.SLPBridge.log('slpOnce(' + key + ') failed: ' + e.message); } catch (ignored) {}
-    }
-  }
+  safely(key, fn);
 }
 
-/* document.head is absent on some error and non-HTML documents. This is the
-   first statement that touches the DOM, so an unguarded throw here killed the
-   entire file — all 460 lines below it — leaving one logcat line behind. */
-var slpHead = document.head || document.documentElement;
-
-/* ──────── INJECT ALL CSS ──────── */
-var CSS = [
-  '@keyframes slp-ripple{0%{transform:scale(0);opacity:.5}100%{transform:scale(4);opacity:0}}',
-  '.slp-ripple-host{position:relative!important;overflow:hidden!important}',
-  '.slp-ripple-dot{position:absolute;border-radius:50%;background:rgba(255,255,255,.35);width:80px;height:80px;margin:-40px 0 0 -40px;pointer-events:none;transform:scale(0);animation:slp-ripple .5s cubic-bezier(.4,0,.2,1) forwards}',
-  '.slp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:99999;display:flex;align-items:center;justify-content:center;cursor:pointer}',
-  '.slp-overlay img{max-width:95vw;max-height:95vh;object-fit:contain;border-radius:4px}',
-  '.slp-price-hl{display:inline-block;background:#fff3e0;color:#e65100;font-weight:700;padding:6px 14px;border-radius:8px;font-size:1.2em;border:2px solid #ff9800;margin:8px 0 !important}',
-  '@keyframes slp-check{0%{opacity:0;transform:scale(.5)}50%{opacity:1}100%{opacity:0;transform:scale(1.5)}}',
-  '.slp-added{position:relative}',
-  '.slp-added::after{content:"\\2713";position:absolute;top:-10px;right:-10px;background:#4caf50;color:#fff;width:24px;height:24px;border-radius:50%;font-size:15px;line-height:24px;text-align:center;animation:slp-check .7s ease forwards;z-index:2}',
-  '.slp-stepper{display:inline-flex;align-items:center}',
-  '.slp-stepper input{width:48px!important;text-align:center;border-radius:0!important;margin:0!important;-moz-appearance:textfield}',
-  '.slp-stepper input::-webkit-outer-spin-button,.slp-stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}',
-  '.slp-stepper button{width:32px;height:32px;border:1px solid #ccc;background:#f5f5f5;font-size:18px;line-height:1;cursor:pointer;padding:0;user-select:none}',
-  '.slp-del{display:inline-block;background:#e53935;color:#fff;border:none;padding:6px 14px;font-size:13px;border-radius:4px;cursor:pointer;white-space:nowrap;margin-left:8px}',
-  '.slp-focus{border-color:#1976d2!important;box-shadow:0 0 0 3px rgba(25,118,210,.2)!important;outline:none}',
-  '.slp-err{border-color:#e53935!important;box-shadow:0 0 0 3px rgba(229,57,53,.2)!important}',
-  '.slp-pw-wrap{position:relative;display:inline-block;width:100%}',
-  '.slp-pw-wrap input{padding-right:48px!important}',
-  '.slp-pw-btn{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;color:#888;cursor:pointer;font-size:12px;padding:6px 8px;z-index:1}',
-  '.slp-pw-bar{height:4px;margin-top:4px;border-radius:2px;transition:width .3s,background .3s;width:0;background:#eee}'
-].join('\n');
-var cssEl = document.getElementById('slp-css');
-if (!cssEl) {
-  cssEl = document.createElement('style');
-  cssEl.id = 'slp-css';
-  slpHead.appendChild(cssEl);
+function safely(label, fn) {
+  try { fn(); } catch (e) { log(label + ' failed: ' + e.message); }
 }
-cssEl.textContent = CSS;
 
-/* ──────── 1. FIX VIEWPORT ──────── */
-var vp = document.querySelector('meta[name="viewport"]');
-if (!vp) { vp = document.createElement('meta'); vp.name = 'viewport'; slpHead.appendChild(vp); }
-vp.content = 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes';
+function log(message) {
+  var b = window.SLPBridge;
+  if (b && typeof b.log === 'function') { try { b.log(String(message)); } catch (ignored) {} }
+}
 
-/* ──────── 2. (removed) DOUBLE-TAP ZOOM GUARD ────────
-   This used to preventDefault() any touchend within 300ms of the previous
-   one. That also cancels the click the second tap would have produced, so
-   tapping a quantity "+" twice quickly only counted once, and a fast second
-   tap on any button was swallowed. With a width=device-width viewport (set
-   above) the WebView does not double-tap-zoom in the first place. */
+function $1(sel, root) { return (root || document).querySelector(sel); }
+function $all(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+function el(tag, className, text) {
+  var e = document.createElement(tag);
+  if (className) e.className = className;
+  if (text != null) e.textContent = text;
+  return e;
+}
 
-/* ──────── 3. MATERIAL RIPPLE ──────── */
-var RIPPLE_SEL = ['button','.btn','a.button','input[type="submit"]','.add-to-cart','.add_to_cart_button','#login-btn','.btn-success','.btn-primary','.btn-info','.btn-default'].join(',');
+var pageType = window.__SLP_PAGE_TYPE__ || 'UNKNOWN';
+var jq = window.jQuery;
+
+/* ──────── VIEWPORT ──────── */
+safely('viewport', function () {
+  var head = document.head || document.documentElement;
+  var vp = $1('meta[name="viewport"]');
+  if (!vp) { vp = el('meta'); vp.name = 'viewport'; head.appendChild(vp); }
+  vp.content = 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes';
+});
+
+/* ──────── TOUCH RIPPLE ──────── */
 slpOnce('ripple', function () {
-document.addEventListener('click', function (e) {
-  var t = e.target.closest(RIPPLE_SEL);
-  if (!t) return;
-  t.classList.add('slp-ripple-host');
-  var d = document.createElement('span');
-  d.className = 'slp-ripple-dot';
-  var r = t.getBoundingClientRect();
-  d.style.top = (e.clientY - r.top) + 'px';
-  d.style.left = (e.clientX - r.left) + 'px';
-  t.appendChild(d);
-  setTimeout(function () { d.remove(); }, 550);
-}, false);
-});
-
-/* ──────── 4. SMOOTH IMAGE LOADING ──────── */
-function observeImages(root) {
-  var imgs = (root || document).querySelectorAll('img:not([data-slp-obs])');
-  imgs.forEach(function (img) {
-    img.setAttribute('data-slp-obs', '1');
-    img.style.transition = 'opacity .35s cubic-bezier(.4,0,.2,1), transform .35s cubic-bezier(.4,0,.2,1)';
-
-    // Handle the already-settled case first. An image that has ALREADY failed
-    // reports complete === true with naturalWidth === 0, and both its load and
-    // error events have long since fired. The old single condition
-    // (!img.complete || img.naturalWidth === 0) matched it, set opacity to 0,
-    // and then attached listeners that could never run — leaving every broken
-    // thumbnail permanently invisible. inject.js runs at onPageFinished, by
-    // which point most images have already settled, so this was the common case.
-    if (img.complete) {
-      img.style.opacity = img.naturalWidth === 0 ? '.3' : '1';
-      img.style.transform = 'scale(1)';
-      return;
-    }
-
-    img.style.opacity = '0';
-    img.style.transform = 'scale(.97)';
-    img.addEventListener('load', function () { img.style.opacity = '1'; img.style.transform = 'scale(1)'; });
-    img.addEventListener('error', function () { img.style.opacity = '.3'; img.style.transform = 'scale(1)'; });
-  });
-}
-observeImages(document);
-slpOnce('imageObserver', function () {
-  if (window.MutationObserver && document.body) {
-    new MutationObserver(function (muts) {
-      muts.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType === 1) observeImages(n); }); });
-    }).observe(document.body, { childList: true, subtree: true });
-  }
-});
-
-/* ──────── 5. TOUCH FEEDBACK FOR PRODUCT CARDS ──────── */
-var CARD_SEL = '.thumbnail.cart-thumb, .single-product, .product-item, .product-card';
-function resetCards() { document.querySelectorAll(CARD_SEL).forEach(function (c) { c.style.transform = ''; }); }
-slpOnce('cardFeedback', function () {
-  document.addEventListener('touchstart', function (e) {
-    var card = e.target.closest(CARD_SEL);
-    if (card) { card.style.transition = 'transform .15s cubic-bezier(.4,0,.2,1)'; card.style.transform = 'scale(0.97)'; }
-  }, { passive: true });
-  document.addEventListener('touchend', resetCards, { passive: true });
-  document.addEventListener('touchcancel', resetCards, { passive: true });
-});
-
-/* ──────── 6. TAG AUTH PAGES ──────── */
-/* Real auth routes are /login and /users/register (the server redirects
-   /users/login to /login?redirect=...). */
-var locPath = window.location.pathname;
-if (document.body && /\/(login|register)/.test(locPath)) {
-  document.body.classList.add('slp-auth-page');
-}
-
-/* ──────── 7. DISMISS POPUPS ──────── */
-var POPUP_SEL = ['#cookie-notice', '#cookie-consent', '.cookie-banner', '#newsletter-popup', '.popup-overlay', '#promo-popup'];
-function dismissPopups() {
-  POPUP_SEL.forEach(function (s) {
-    var el = document.querySelector(s);
-    if (el) { el.style.transition = 'opacity .3s ease'; el.style.opacity = '0'; setTimeout(function () { el.style.display = 'none'; }, 300); }
-  });
-}
-dismissPopups();
-slpOnce('popupRetry', function () { setTimeout(dismissPopups, 1500); });
-
-/* ──────── 7b. APP NAVIGATION HASHES ──────── */
-/* #slp-browse scrolls to the product catalog (Browse tab);
-   #registetModal scrolls to the register form on /login. */
-function slpHandleHash() {
-  var hash = location.hash;
-  var target = null;
-  if (hash === '#slp-browse') {
-    target = document.querySelector('.nav-tabs, .features_items, .catagories-heading');
-  } else if (hash.indexOf('registetModal') !== -1) {
-    target = document.getElementById('registetModal');
-  }
-  if (target) {
-    setTimeout(function () { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 300);
-  }
-}
-slpHandleHash();
-if (!window.__slpHashHooked) {
-  window.__slpHashHooked = true;
-  window.addEventListener('hashchange', slpHandleHash);
-}
-
-/* ──────── 8. SMOOTH SCROLL ──────── */
-slpOnce('smoothScroll', function () {
   document.addEventListener('click', function (e) {
-    var a = e.target.closest('a[href^="#"]');
-    if (!a) return;
-    var id = a.getAttribute('href');
-    if (!id || id === '#') return;
-    // An href like "#!" or "#/route" is not a valid selector and throws.
-    var t = null;
-    try { t = document.querySelector(id); } catch (ignored) { return; }
-    if (t) { e.preventDefault(); t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    var t = e.target.closest && e.target.closest('.btn, button[type="submit"], input[type="submit"]');
+    if (!t || t.tagName === 'INPUT') return;   // <input> cannot hold a child
+    var r = t.getBoundingClientRect();
+    var dot = el('span', 'slp-ripple-dot');
+    dot.style.top = (e.clientY - r.top) + 'px';
+    dot.style.left = (e.clientX - r.left) + 'px';
+    t.classList.add('slp-ripple-host');
+    t.appendChild(dot);
+    setTimeout(function () { dot.remove(); }, 500);
   }, false);
 });
 
-/* ──────── 9. STAGGER ANIMATION ──────── */
-function staggerCards() {
-  var cards = document.querySelectorAll('.thumbnail.cart-thumb');
-  cards.forEach(function (card, i) {
-    if (card.dataset.slpStaggered) return;
-    card.dataset.slpStaggered = '1';
-    card.style.opacity = '0';
-    card.style.transform = 'translateY(16px)';
-    card.style.transition = 'opacity .4s cubic-bezier(.4,0,.2,1), transform .4s cubic-bezier(.4,0,.2,1)';
-    card.style.transitionDelay = Math.min(i * 50, 400) + 'ms';
-    requestAnimationFrame(function () {
-      requestAnimationFrame(function () { card.style.opacity = '1'; card.style.transform = 'translateY(0)'; });
+/* ──────── IMAGE FADE-IN ────────
+   The listeners are attached whether or not the image has settled: the
+   add-to-cart sheet reuses one <img> and swaps its src, so an image that
+   was "broken" a moment ago (empty src) must be able to recover. The
+   previous version set a permanent inline opacity and left that image
+   at 30%. */
+function watchImages(root) {
+  $all('img:not(.slp-img)', root).forEach(function (img) {
+    img.classList.add('slp-img');
+    img.addEventListener('load', function () {
+      img.classList.remove('slp-img-loading', 'slp-img-broken');
     });
-  });
-}
-requestAnimationFrame(function () { staggerCards(); });
-
-/* ════════════════════════════════════════════════════
-   10. PAGE DETECTION + BRIDGE HELPERS
-   ════════════════════════════════════════════════════ */
-
-function detectPage() {
-  var p = window.location.pathname;
-  if (/\/product\/\d+/i.test(p) || document.querySelector('.product-view')) return 'PRODUCT_DETAIL';
-  if (/\/cart-view|\/orders\//i.test(p)) return 'CART';
-  if (/\/checkout|\/add-to-cart/i.test(p)) return 'CHECKOUT';
-  if (/\/register/i.test(p)) return 'REGISTER';
-  if (/\/login/i.test(p)) return 'LOGIN';
-  return 'UNKNOWN';
-}
-
-var pageType = window.__SLP_PAGE_TYPE__ || detectPage();
-var br = window.SLPBridge;
-
-function brCall(m, a, b, c) {
-  // Shares the flood guard with page-detector.js (same window counter)
-  window.__slpBridgeCalls = (window.__slpBridgeCalls || 0) + 1;
-  if (window.__slpBridgeCalls === 300 && br && br.log) {
-    try { br.log('BRIDGE FLOOD (' + m + '): ' + (new Error().stack || 'no stack')); } catch (e) {}
-  }
-  if (window.__slpBridgeCalls > 400) return;
-  if (br && typeof br[m] === 'function') { try { br[m](a, b, c); } catch (ignored) {} }
-}
-
-/* ════════════════════════════════════════════════════
-   11. PAGE-SPECIFIC ENHANCEMENTS
-   ════════════════════════════════════════════════════ */
-
-/* ──── SHARED HELPERS ──── */
-
-function autoFocusFirst() {
-  // Only on the first pass for this document: re-injection happens on
-  // fragment navigation, and refocusing then pops the keyboard back up and
-  // yanks the caret out of whatever the user was typing.
-  if (window.__slpAutoFocused) return;
-  window.__slpAutoFocused = true;
-  var inputs = document.querySelectorAll('input[type="text"], input[type="email"], input[type="password"], input[type="tel"]');
-  for (var i = 0; i < inputs.length; i++) { if (!inputs[i].value) { inputs[i].focus(); break; } }
-}
-
-function addPwToggles() {
-  document.querySelectorAll('input[type="password"]').forEach(function (pw) {
-    if (pw.dataset.slpPw) return;
-    pw.dataset.slpPw = '1';
-    var wrap = document.createElement('span');
-    wrap.className = 'slp-pw-wrap';
-    pw.parentNode.insertBefore(wrap, pw);
-    wrap.appendChild(pw);
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'slp-pw-btn';
-    btn.textContent = 'Show';
-    btn.addEventListener('click', function (e) {
-      e.preventDefault();
-      var isPass = pw.type === 'password';
-      pw.type = isPass ? 'text' : 'password';
-      btn.textContent = isPass ? 'Hide' : 'Show';
+    img.addEventListener('error', function () {
+      img.classList.remove('slp-img-loading');
+      if (img.getAttribute('src')) img.classList.add('slp-img-broken');
     });
-    wrap.appendChild(btn);
+    if (!img.getAttribute('src')) return;
+    if (!img.complete) img.classList.add('slp-img-loading');
+    else if (img.naturalWidth === 0) img.classList.add('slp-img-broken');
   });
 }
 
-/* ──── PRODUCT_DETAIL ──── */
-
-function enhanceProductDetail() {
-  /* Tap-to-zoom on main product image (.product-view holds the hero image) */
-  var prodImg = document.querySelector('.product-view img, .product-image img, .main-image img, .product-img img');
-  if (prodImg) {
-    prodImg.style.cursor = 'zoom-in';
-    prodImg.addEventListener('click', function () {
-      var overlay = document.createElement('div');
-      overlay.className = 'slp-overlay';
-      var bigImg = document.createElement('img');
-      bigImg.src = prodImg.src;
-      overlay.appendChild(bigImg);
-      overlay.addEventListener('click', function () { overlay.remove(); });
-      document.body.appendChild(overlay);
-    });
-  }
-
-  /* Price highlight */
-  var priceEl = document.querySelector('.item-price, .product-price, .price');
-  if (priceEl && !priceEl.classList.contains('slp-price-hl')) { priceEl.classList.add('slp-price-hl'); }
-
-  /* Animated add-to-cart */
-  var atc = document.querySelector('.product .add-to-cart, button.add-to-cart, .btn-add-to-cart');
-  if (atc) {
-    atc.style.transition = 'transform .2s cubic-bezier(.4,0,.2,1)';
-    atc.addEventListener('click', function () {
-      atc.style.transform = 'scale(.94)';
-      setTimeout(function () {
-        atc.style.transform = 'scale(1)';
-        atc.classList.add('slp-added');
-        setTimeout(function () { atc.classList.remove('slp-added'); }, 750);
-      }, 150);
-    });
-  }
-
-  /* onProductViewed is reported by page-detector.js - not from here too. */
-}
-
-/* ──── CART ──── */
-
-function enhanceCart() {
-  /* Quantity steppers (+/- buttons) */
-  document.querySelectorAll('.quantity input, input.qty, input[type="number"][name*="qty"], input[type="number"][name*="quantity"]').forEach(function (input) {
+/* ──────── QUANTITY STEPPERS ────────
+   Wraps the site's quantity inputs (input.input-qty: the add-to-cart
+   sheet, the product page and the cart) in − / + buttons. */
+function addSteppers(root) {
+  $all('input.input-qty', root).forEach(function (input) {
     if (input.dataset.slpStep) return;
     input.dataset.slpStep = '1';
-    var wrap = document.createElement('span');
-    wrap.className = 'slp-stepper';
+    input.setAttribute('inputmode', 'numeric');
+
+    var wrap = el('span', 'slp-stepper');
     input.parentNode.insertBefore(wrap, input);
+    var dec = el('button', null, '−');
+    var inc = el('button', null, '+');
+    dec.type = inc.type = 'button';
+    dec.setAttribute('aria-label', 'Decrease quantity');
+    inc.setAttribute('aria-label', 'Increase quantity');
+    wrap.appendChild(dec);
     wrap.appendChild(input);
-    var dec = document.createElement('button');
-    dec.type = 'button'; dec.textContent = '−';
-    var inc = document.createElement('button');
-    inc.type = 'button'; inc.textContent = '+';
-    wrap.insertBefore(dec, input);
     wrap.appendChild(inc);
-    // `parseInt(input.min) || 1` turned a legitimate min="0" into 1, so a
-    // quantity (the site's "Cancelled" count, and "Mint" on the cart page)
-    // could never be stepped back down to zero.
-    var min = parseInt(input.min, 10);
-    if (isNaN(min)) min = 0;
-    var max = parseInt(input.max, 10);
-    if (isNaN(max)) max = 9999;
+
     function change(by) {
+      if (input.disabled) return;
+      // The popup's "Mint" input declares min="1", but 0 is a real value
+      // there (cancelled-only orders), and the site itself fills it with 0.
+      var max = parseInt(input.max, 10);
+      if (isNaN(max)) max = 9999;
       var v = parseInt(input.value, 10);
       if (isNaN(v)) v = 0;
-      v += by;
-      if (v < min) v = min;
-      if (v > max) v = max;
+      v = Math.min(max, Math.max(0, v + by));
       input.value = v;
       // The site validates stock through a "donetyping" plugin bound to
-      // keypress/paste/blur - it never hears `change`. Fire what it listens
-      // for, so over-ordering is flagged from the buttons as it is from typing.
+      // keypress/paste/blur - it never hears `change`. Fire what it
+      // listens for, so over-ordering is flagged from the buttons too.
       ['input', 'keypress', 'change'].forEach(function (type) {
         input.dispatchEvent(new Event(type, { bubbles: true }));
       });
@@ -356,99 +134,381 @@ function enhanceCart() {
     dec.addEventListener('click', function () { change(-1); });
     inc.addEventListener('click', function () { change(1); });
   });
-
-  /* Swipe-to-delete on cart rows */
-  var sx = 0, sy = 0;
-  slpOnce('swipeDelete', function () {
-  document.addEventListener('touchstart', function (e) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
-  document.addEventListener('touchend', function (e) {
-    var row = e.target.closest('tr');
-    if (!row || row.querySelector('.slp-del')) return;
-
-    // Only offer Remove on a row that carries a real remove control.
-    //
-    // The old selector was 'tr.cart_item, tr' — the bare `tr` matched every
-    // row of every table on the site, including subtotal and total rows. Worse,
-    // the fallback when no control was found was row.remove(), which deleted
-    // the row from the DOM with NO server call: the user saw the item vanish,
-    // the server still had it, and updateCartCount() then reported a count that
-    // matched neither. There is deliberately no local-delete fallback now.
-    var rm = row.querySelector(
-      '.remove a, a.remove, button.remove, a[href*="remove"], a[href*="delete"]'
-    );
-    if (!rm) return;
-
-    var dx = e.changedTouches[0].clientX - sx;
-    var dy = e.changedTouches[0].clientY - sy;
-    if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 2) {
-      var del = document.createElement('button');
-      del.className = 'slp-del';
-      del.textContent = 'Remove';
-      del.addEventListener('click', function () { rm.click(); });
-      row.appendChild(del);
-      setTimeout(function () { if (del.parentNode) del.remove(); }, 4000);
-    }
-  }, { passive: true });
-  });
-
-  /* Prominent cart total at top */
-  var totalEl = document.querySelector('.cart-total .amount, .order-total .amount, .cart-subtotal .amount, .woocommerce-Price-amount.amount, .total .amount');
-  if (totalEl && !document.querySelector('.slp-cart-banner')) {
-    var banner = document.createElement('div');
-    banner.className = 'slp-cart-banner';
-    banner.style.cssText = 'background:#fff3e0;padding:10px 16px;border-radius:8px;margin-bottom:16px;font-size:1.1em;text-align:center;border:1px solid #ffe0b2;font-weight:700;color:#e65100';
-    banner.textContent = 'Cart Total: ' + (totalEl.textContent || '').trim();
-    var container = document.querySelector('.woocommerce, .cart-page, .main-content, main, .content');
-    if (container) container.insertBefore(banner, container.firstChild);
-  }
 }
 
-/* ──── CHECKOUT ──── */
+/* ──────── DOM CHANGES ────────
+   Search results and the cart sheet arrive over AJAX. */
+function enhanceAdded(root) {
+  watchImages(root);
+  addSteppers(root);
+}
+enhanceAdded(document);
+slpOnce('observer', function () {
+  if (!window.MutationObserver || !document.body) return;
+  new MutationObserver(function (muts) {
+    for (var i = 0; i < muts.length; i++) {
+      var added = muts[i].addedNodes;
+      for (var j = 0; j < added.length; j++) {
+        if (added[j].nodeType === 1 && !added[j].classList.contains('slp-ripple-dot')) {
+          safely('enhanceAdded', enhanceAdded.bind(null, added[j]));
+        }
+      }
+    }
+  }).observe(document.body, { childList: true, subtree: true });
+});
 
-function enhanceCheckout() {
-  /* Visual focus indicators on form fields */
-  document.querySelectorAll('input:not([type="submit"]):not([type="button"]), select, textarea').forEach(function (f) {
-    f.addEventListener('focus', function () { f.classList.add('slp-focus'); });
-    f.addEventListener('blur', function () { f.classList.remove('slp-focus'); });
+/* ──────── APP NAVIGATION HASHES ────────
+   #slp-browse      Browse tab: scroll to the catalogue
+   #registetModal   Sign up: scroll to the register form on /login */
+function handleHash() {
+  var hash = location.hash || '';
+  var target = null;
+  if (hash === '#slp-browse') {
+    target = $1('.category-tab, .nav-tabs, #resultPanel');
+  } else if (hash.indexOf('registetModal') !== -1) {
+    target = document.getElementById('registetModal');
+  }
+  if (target) {
+    setTimeout(function () { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 250);
+  }
+}
+handleHash();
+slpOnce('hashchange', function () { window.addEventListener('hashchange', handleHash); });
+
+/* ════════════════════════════════════════════════════
+   HOME
+   ════════════════════════════════════════════════════ */
+
+function enhanceHome() {
+  /* The server-flash strip is whitespace-only on a normal load, which
+     defeats :empty. */
+  var flash = $1('.addHomeFlash');
+  if (flash) flash.classList.toggle('slp-empty', !flash.textContent.trim() && !flash.children.length);
+
+  enhanceCarousel();
+  enhanceSearch();
+}
+
+/* Slides: swipe to change, tap to open - but only when the slide's
+   button holds a real URL. Many hold free text ("SPECIAL ANNONCEMENT"),
+   which the site renders as a dead relative link. */
+function enhanceCarousel() {
+  var carousel = document.getElementById('slider-carousel');
+  if (!carousel || carousel.dataset.slpCarousel) return;
+  carousel.dataset.slpCarousel = '1';
+
+  $all('.item', carousel).forEach(function (item) {
+    var link = $1('a.btn', item);
+    var href = link ? (link.getAttribute('href') || '').trim() : '';
+    if (!/^(https?:\/\/|\/)/i.test(href)) return;
+    var img = $1('img.slider-image', item);
+    if (!img) return;
+    img.style.cursor = 'pointer';
+    img.addEventListener('click', function () { location.href = sameSiteUrl(href); });
   });
 
-  /* Required-field validation on first submit */
-  var form = document.querySelector('.woocommerce-checkout form, form.checkout, form');
-  if (form) {
-    form.addEventListener('submit', function (e) {
-      var ok = true;
-      form.querySelectorAll('[required], [aria-required="true"]').forEach(function (f) {
-        f.classList.remove('slp-err');
-        if (f.type === 'checkbox' || f.type === 'radio') return;
-        if (!f.value || !f.value.trim()) { f.classList.add('slp-err'); ok = false; }
-      });
-      if (!ok) { e.preventDefault(); e.stopPropagation(); }
+  var x0 = 0, y0 = 0;
+  carousel.addEventListener('touchstart', function (e) {
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+  }, { passive: true });
+  carousel.addEventListener('touchend', function (e) {
+    var dx = e.changedTouches[0].clientX - x0;
+    var dy = e.changedTouches[0].clientY - y0;
+    if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (jq && jq.fn && jq.fn.carousel) jq(carousel).carousel(dx < 0 ? 'next' : 'prev');
+  }, { passive: true });
+}
+
+/* Slide links are written against www.stamps.slpost.gov.lk. That is a
+   different cookie origin: following one silently drops the session and
+   the cart. Keep the path, stay on the host we are on. */
+function sameSiteUrl(href) {
+  try {
+    var u = new URL(href, location.href);
+    if (/(^|\.)stamps\.slpost\.gov\.lk$/i.test(u.hostname)) {
+      return location.origin + u.pathname + u.search + u.hash;
+    }
+    return u.href;
+  } catch (e) { return href; }
+}
+
+/* Search: the site shows every filter at once, a full screen of controls
+   above the catalogue. Keep the keyword field and the Search button on
+   one line and fold the rest behind a "Filters" toggle.
+
+   Elements are MOVED, never recreated: the site's handlers are bound to
+   #searchedKeyword and #searchButton directly and travel with them. */
+function enhanceSearch() {
+  var menu = document.getElementById('search-menu');
+  var keyword = document.getElementById('searchedKeyword');
+  var button = document.getElementById('searchButton');
+  if (!menu || !keyword || !button || menu.dataset.slpSearch) return;
+  menu.dataset.slpSearch = '1';
+
+  var keywordGroup = keyword.closest('.form-group');
+
+  var filters = el('div', 'slp-filters');
+  filters.hidden = true;
+  filters.id = 'slp-filters';
+  $all(':scope > .panel-group, :scope > form', menu).forEach(function (n) { filters.appendChild(n); });
+
+  var row = el('div', 'slp-search-row');
+  keyword.type = 'search';
+  keyword.setAttribute('enterkeyhint', 'search');
+  keyword.setAttribute('aria-label', 'Search the catalogue');
+  keyword.placeholder = 'Search by name, CSL, bulletin # or date';
+  row.appendChild(keyword);
+  row.appendChild(button);
+  if (keywordGroup) keywordGroup.style.display = 'none';
+
+  var toggle = el('button', 'slp-filter-toggle');
+  toggle.type = 'button';
+  toggle.setAttribute('aria-controls', 'slp-filters');
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.appendChild(document.createTextNode('Filters'));
+  var count = el('span', 'slp-filter-count');
+  toggle.appendChild(count);
+  toggle.addEventListener('click', function () {
+    filters.hidden = !filters.hidden;
+    toggle.setAttribute('aria-expanded', String(!filters.hidden));
+  });
+
+  menu.appendChild(row);
+  menu.appendChild(toggle);
+  menu.appendChild(filters);
+
+  function refreshCount() {
+    var n = $all('.search-category-check', filters).filter(function (c) { return c.checked; }).length;
+    var year = document.getElementById('searchedYears');
+    if (year && year.value) n++;
+    count.textContent = n ? String(n) : '';
+  }
+  filters.addEventListener('change', refreshCount);
+  refreshCount();
+
+  // Searching scrolls to the results; get the keyboard out of the way.
+  button.addEventListener('click', function () { keyword.blur(); });
+  keyword.addEventListener('keydown', function (e) { if (e.keyCode === 13) keyword.blur(); });
+}
+
+/* The add-to-cart sheet opens with whatever is already in the cart for
+   that item - 0 and 0 for anything new - so "Add to Cart" on a fresh
+   item used to add a line with a quantity of zero. Default a new item
+   to one mint copy, as the product page does. */
+slpOnce('sheetDefaults', function () {
+  if (!jq || !jq.fn || typeof jq(document).ajaxSuccess !== 'function') return;
+  jq(document).ajaxSuccess(function (event, xhr, settings) {
+    if (!settings || !/\/popupGet/i.test(settings.url || '')) return;
+    var mint = document.getElementById('model_mint_qty');
+    var cancelled = document.getElementById('model_cancelled_qty');
+    if (!mint) return;
+    var m = parseInt(mint.value, 10) || 0;
+    var c = cancelled ? (parseInt(cancelled.value, 10) || 0) : 0;
+    if (m === 0 && c === 0) mint.value = 1;
+    if (cancelled && cancelled.value === '') cancelled.value = 0;
+  });
+});
+
+/* ════════════════════════════════════════════════════
+   PRODUCT DETAIL
+   ════════════════════════════════════════════════════ */
+
+function enhanceProductDetail() {
+  /* Tap the hero image for a full-screen, pinch-zoomable view. */
+  var hero = $1('.product-view > img');
+  if (hero && !hero.dataset.slpZoom) {
+    hero.dataset.slpZoom = '1';
+    hero.addEventListener('click', function () {
+      var overlay = el('div', 'slp-overlay');
+      var big = el('img');
+      big.src = hero.getAttribute('data-zoom-image') || hero.src;
+      big.alt = hero.alt || '';
+      var close = el('button', null, '×');
+      close.type = 'button';
+      close.setAttribute('aria-label', 'Close');
+      overlay.appendChild(big);
+      overlay.appendChild(close);
+      overlay.addEventListener('click', function () { overlay.remove(); });
+      document.body.appendChild(overlay);
     });
   }
+
+  /* "Related Items" is a bare <span> in a column, followed by sibling
+     card columns in the same .row. Mark the row as a card grid. */
+  $all('#main-content .row > .column > span').forEach(function (span) {
+    if (!/related items/i.test(span.textContent)) return;
+    span.classList.add('slp-section-title');
+    var rowEl = span.parentNode.parentNode;
+    if ($1('.product-image-wrapper', rowEl)) rowEl.classList.add('slp-card-grid');
+  });
+
+  var cancelled = $1('#product-view-table .cancelled-qty');
+  if (cancelled && cancelled.value === '') cancelled.value = 0;
 }
 
-/* ──── LOGIN ──── */
+/* ════════════════════════════════════════════════════
+   CART
+   ════════════════════════════════════════════════════ */
 
-/* The site's only sign-in form (.home-login) lives inside the navbar, which
-   the app hides on every page. Move it into the visible content area, in
-   front of the inline register block (#registetModal), and wrap it as a card. */
+function enhanceCart() {
+  var form = document.getElementById('cart_view_form');
+  if (!form) return;   // empty cart: nothing to do, CSS handles it
+
+  /* Summary rows (sub total, postage, grand total) are the body rows
+     that start with a <th>. Tag them, and pick out the label and the
+     value so CSS can lay them out as "label ...... value". */
+  var table = $1(':scope > .row table', form);
+  if (table && table.tBodies[0]) {
+    var sums = Array.prototype.filter.call(table.tBodies[0].rows, function (r) {
+      return r.id !== 'no-shipping-message' && r.cells.length && r.cells[0].tagName === 'TH';
+    });
+    sums.forEach(function (r, i) {
+      r.classList.add('slp-sum');
+      if (i === 0) r.classList.add('slp-sum-first');
+      if (i === sums.length - 1) r.classList.add('slp-sum-last');
+      var cells = Array.prototype.filter.call(r.cells, function (c) {
+        return !c.classList.contains('image-holder');
+      });
+      var label = cells[0];
+      var value = null;
+      for (var k = cells.length - 1; k > 0; k--) {
+        if (cells[k].textContent.replace(/ /g, ' ').trim() || cells[k].querySelector('[id]')) {
+          value = cells[k];
+          break;
+        }
+      }
+      cells.forEach(function (c) {
+        c.classList.remove('slp-sum-value', 'slp-sum-hide');
+        if (c === value) c.classList.add('slp-sum-value');
+        else if (c !== label) c.classList.add('slp-sum-hide');
+      });
+    });
+  }
+
+  /* Quantities are only saved by "Update Cart". Say so once one changes. */
+  var update = document.getElementById('submit-ajax');
+  var actions = $1(':scope > .row.no-side-margin:last-of-type', form);
+  if (update && actions && !form.dataset.slpDirty) {
+    form.dataset.slpDirty = '1';
+    var hint = el('p', 'slp-hint', 'Quantities changed — tap Update Cart to save them.');
+    hint.hidden = true;
+    hint.setAttribute('role', 'status');
+    actions.parentNode.insertBefore(hint, actions);
+    var markDirty = function (e) {
+      if (!e.target.classList || !e.target.classList.contains('input-qty')) return;
+      hint.hidden = false;
+      update.classList.add('slp-dirty');
+    };
+    form.addEventListener('input', markDirty);
+    form.addEventListener('change', markDirty);
+  }
+}
+
+/* "Clear cart" is a plain link that empties the cart the moment it is
+   tapped, and it sits next to "More Items". Ask first. */
+slpOnce('confirmClear', function () {
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[href*="clear-cart"]');
+    if (!a) return;
+    if (!window.confirm('Remove every item from your cart?')) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+});
+
+/* ════════════════════════════════════════════════════
+   SIGN IN / REGISTER
+   ════════════════════════════════════════════════════ */
+
+/* On /login the only sign-in form (.home-login) sits inside the navbar,
+   which the app hides. Lift it into the page, above the register block,
+   as its own card. /users/login-view has a proper form and needs none
+   of this. */
 function relocateLoginForm() {
   var reg = document.getElementById('registetModal');
-  if (!document.querySelector('.slp-login-card')) {
-    var home = document.querySelector('.navbar .home-login, nav .home-login');
-    if (home && reg && reg.parentNode) {
-      var card = document.createElement('div');
-      card.className = 'slp-login-card';
-      var h = document.createElement('h2');
-      h.textContent = 'Sign In';
-      card.appendChild(h);
-      card.appendChild(home);
-      reg.parentNode.insertBefore(card, reg);
-    }
-  }
-  if (location.hash.indexOf('registetModal') !== -1 && reg) {
-    setTimeout(function () { reg.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 200);
-  }
+  if (!reg || !reg.parentNode || $1('.slp-login-card')) return;
+  var home = $1('nav.navbar .home-login');
+  if (!home) return;
+
+  var card = el('div', 'slp-login-card');
+  card.appendChild(el('h2', null, 'Sign in'));
+  card.appendChild(home);
+  var forgot = el('a', 'slp-forgot', 'Forgot password?');
+  forgot.href = '/users/password';
+  card.appendChild(forgot);
+  reg.parentNode.insertBefore(card, reg);
+
+  // The navbar form opts out of autofill; a sign-in form should not.
+  var email = $1('input[name="email"]', card);
+  var pw = $1('input[type="password"]', card);
+  if (email) { email.type = 'email'; email.setAttribute('autocomplete', 'username'); email.placeholder = 'E-mail'; }
+  if (pw) pw.setAttribute('autocomplete', 'current-password');
+}
+
+function addPwToggles() {
+  $all('input[type="password"]').forEach(function (pw) {
+    if (pw.dataset.slpPw) return;
+    pw.dataset.slpPw = '1';
+    var wrap = el('span', 'slp-pw-wrap');
+    pw.parentNode.insertBefore(wrap, pw);
+    wrap.appendChild(pw);
+    var btn = el('button', 'slp-pw-btn', 'Show');
+    btn.type = 'button';
+    btn.setAttribute('aria-label', 'Show password');
+    btn.addEventListener('click', function () {
+      var show = pw.type === 'password';
+      pw.type = show ? 'text' : 'password';
+      btn.textContent = show ? 'Hide' : 'Show';
+      btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+    wrap.appendChild(btn);
+  });
+}
+
+/* Strength meter on the register form's password only - not on the
+   sign-in card that shares the page. */
+function addStrengthMeter() {
+  var pw = $1('#registetModal input[type="password"]');
+  if (!pw || pw.dataset.slpMeter) return;
+  pw.dataset.slpMeter = '1';
+  pw.setAttribute('autocomplete', 'new-password');
+  var meter = el('div', 'slp-pw-meter');
+  meter.hidden = true;
+  var track = el('i');
+  var bar = el('b');
+  var text = el('span');
+  track.appendChild(bar);
+  meter.appendChild(track);
+  meter.appendChild(text);
+  var anchor = pw.closest('.slp-pw-wrap') || pw;
+  anchor.parentNode.insertBefore(meter, anchor.nextSibling);
+  var LABELS = ['', 'Weak', 'Fair', 'Fair', 'Strong', 'Very strong'];
+  pw.addEventListener('input', function () {
+    var v = pw.value, s = 0;
+    if (v.length >= 6) s++;
+    if (v.length >= 10) s++;
+    if (/[A-Z]/.test(v) && /[a-z]/.test(v)) s++;
+    if (/[0-9]/.test(v)) s++;
+    if (/[^A-Za-z0-9]/.test(v)) s++;
+    meter.hidden = !v;
+    meter.setAttribute('data-level', String(s));
+    bar.style.width = (s * 20) + '%';
+    text.textContent = LABELS[s] || '';
+  });
+}
+
+function enhanceAuth() {
+  relocateLoginForm();
+
+  var regTitle = $1('#registetModal .modal-title');
+  if (regTitle) regTitle.textContent = 'Create account';
+  var loginTitle = $1('#loginModal .modal-title');
+  if (loginTitle) loginTitle.textContent = 'Sign in';
+
+  addPwToggles();
+  addStrengthMeter();
+
   /* Pre-tick "Remember me" so the site keeps the session alive longer;
      the user can still untick it before submitting. */
   var rm = document.getElementById('remember_me');
@@ -456,78 +516,92 @@ function relocateLoginForm() {
     rm.checked = true;
     rm.dataset.slpTouched = '1';
   }
+  /* No onAuthStateChanged from here - page-detector.js reports the real
+     state; hard-coding false overwrote a persisted signed-in session. */
 }
 
-function enhanceLogin() {
-  relocateLoginForm();
-  autoFocusFirst();
-  addPwToggles();
-  /* NOTE: no onAuthStateChanged here — page-detector.js reports the real
-     state; hard-coding false overwrote a persisted logged-in session. */
-}
+/* ════════════════════════════════════════════════════
+   CONTENT PAGES
+   ════════════════════════════════════════════════════ */
 
-/* ──── REGISTER ──── */
-
-function enhanceRegister() {
-  relocateLoginForm();
-  autoFocusFirst();
-  addPwToggles();
-
-  /* Real-time password strength indicator */
-  document.querySelectorAll('input[type="password"]').forEach(function (pw) {
-    if (pw.dataset.slpStr) return;
-    pw.dataset.slpStr = '1';
-    var bar = document.createElement('div');
-    bar.className = 'slp-pw-bar';
-    pw.parentNode.appendChild(bar);
-    pw.addEventListener('input', function () {
-      var v = pw.value;
-      var s = 0;
-      if (v.length >= 6) s++;
-      if (v.length >= 10) s++;
-      if (/[A-Z]/.test(v)) s++;
-      if (/[0-9]/.test(v)) s++;
-      if (/[^A-Za-z0-9]/.test(v)) s++;
-      var colors = ['#eee', '#e53935', '#ff9800', '#ff9800', '#4caf50', '#388e3c'];
-      bar.style.width = s > 0 ? (s * 20) + '%' : '0';
-      bar.style.background = colors[s] || '#388e3c';
-      bar.title = ['', 'Weak', 'Fair', 'Fair', 'Strong', 'Very strong'][s] || '';
-    });
+/* The contact page embeds a Google map whose API key Google rejects, so
+   the frame renders an error message. Offer the same place as a link
+   instead; the app hands off-site links to the Maps app or the browser. */
+function enhanceStatic() {
+  /* Contact details: make the address and number tappable. The app hands
+     mailto: and tel: to the mail and phone apps. */
+  $all('#contact-table td').forEach(function (td) {
+    if (td.dataset.slpLink || td.children.length) return;
+    var text = td.textContent.trim();
+    var href = null;
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) href = 'mailto:' + text;
+    else if (/^[+()\d][\d\s()+-]{6,}$/.test(text)) href = 'tel:' + text.replace(/[^\d+]/g, '');
+    if (!href) return;
+    td.dataset.slpLink = '1';
+    var a = el('a', null, text);
+    a.href = href;
+    td.textContent = '';
+    td.appendChild(a);
   });
+
+  /* Downloads is a table that is usually empty: column headings and a
+     one-page pager over nothing. Say so instead. */
+  var downloads = $1('table.download-items');
+  if (downloads && !downloads.dataset.slpChecked) {
+    downloads.dataset.slpChecked = '1';
+    var body = downloads.tBodies[0];
+    if (!body || !body.rows.length) {
+      downloads.classList.add('slp-empty');
+      downloads.parentNode.insertBefore(
+        el('p', 'slp-empty-note', 'There is nothing to download at the moment.'), downloads);
+    }
+  }
+
+  var frame = $1('#main-content iframe[src*="google.com/maps/embed"]');
+  if (!frame || frame.dataset.slpMap) return;
+  frame.dataset.slpMap = '1';
+  var place = /place_id:([\w-]+)/.exec(frame.getAttribute('src') || '');
+  var link = el('a', 'btn btn-default slp-map-link', 'Open in Google Maps');
+  link.href = 'https://www.google.com/maps/search/?api=1&query=' +
+    encodeURIComponent('Philatelic Bureau, Colombo, Sri Lanka') +
+    (place ? '&query_place_id=' + encodeURIComponent(place[1]) : '');
+  frame.parentNode.insertBefore(link, frame);
+  frame.remove();
 }
 
-/* ──────── RENDER DIAGNOSTICS ──────── */
-/* Reports elements that cover the whole viewport plus the effective page
-   background — surfaces "black screen" causes in logcat. */
+/* ════════════════════════════════════════════════════
+   RENDER DIAGNOSTICS (debug builds only)
+   Reports elements covering the whole viewport and the effective page
+   background - surfaces "blank screen" causes in logcat.
+   ════════════════════════════════════════════════════ */
 slpOnce('diagnostics', function () {
-if (!window.__SLP_DIAG__) return;   // opt-in; see MainActivity injectCombinedJs
-setTimeout(function () {
-  try {
-    var vw = window.innerWidth, vh = window.innerHeight;
-    var els = document.querySelectorAll('body > *, body > * > *');
-    for (var i = 0; i < els.length; i++) {
-      var el = els[i], cs = getComputedStyle(el);
-      if ((cs.position === 'fixed' || cs.position === 'absolute') &&
-          el.offsetWidth >= vw * 0.9 && el.offsetHeight >= vh * 0.9 &&
-          cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0.1) {
-        brCall('log', 'DIAG overlay <' + el.tagName.toLowerCase() + ' id="' + el.id + '" class="' + el.className + '"> z=' + cs.zIndex + ' bg=' + cs.backgroundColor);
-      }
-    }
-    var bcs = getComputedStyle(document.body);
-    brCall('log', 'DIAG body bg=' + bcs.backgroundColor + ' opacity=' + bcs.opacity +
-      ' display=' + bcs.display + ' h=' + document.body.scrollHeight +
-      ' kids=' + document.body.children.length + ' anim=' + bcs.animationName);
-  } catch (e) { brCall('log', 'DIAG failed: ' + e.message); }
-}, 900);
+  if (!window.__SLP_DIAG__) return;   // opt-in; see MainActivity.injectCombinedJs
+  setTimeout(function () {
+    safely('diagnostics', function () {
+      var vw = window.innerWidth, vh = window.innerHeight;
+      $all('body > *, body > * > *').forEach(function (e) {
+        var cs = getComputedStyle(e);
+        if ((cs.position === 'fixed' || cs.position === 'absolute') &&
+            e.offsetWidth >= vw * 0.9 && e.offsetHeight >= vh * 0.9 &&
+            cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0.1) {
+          log('DIAG overlay <' + e.tagName.toLowerCase() + ' id="' + e.id + '" class="' + e.className +
+              '"> z=' + cs.zIndex + ' bg=' + cs.backgroundColor);
+        }
+      });
+      var bcs = getComputedStyle(document.body);
+      log('DIAG body bg=' + bcs.backgroundColor + ' opacity=' + bcs.opacity + ' display=' + bcs.display +
+          ' h=' + document.body.scrollHeight + ' kids=' + document.body.children.length);
+    });
+  }, 900);
 });
 
-/* ──── DISPATCH BASED ON PAGE TYPE ──── */
+/* ──────── DISPATCH ──────── */
 switch (pageType) {
-  case 'PRODUCT_DETAIL': enhanceProductDetail(); break;
-  case 'CART': enhanceCart(); break;
-  case 'CHECKOUT': enhanceCheckout(); break;
-  case 'LOGIN': enhanceLogin(); break;
-  case 'REGISTER': enhanceRegister(); break;
+  case 'HOME':           safely('home', enhanceHome); break;
+  case 'PRODUCT_DETAIL': safely('product', enhanceProductDetail); break;
+  case 'CART':           safely('cart', enhanceCart); break;
+  case 'LOGIN':
+  case 'REGISTER':       safely('auth', enhanceAuth); break;
+  case 'STATIC':         safely('static', enhanceStatic); break;
 }
 })();
-
