@@ -315,24 +315,10 @@ function enhanceProductDetail() {
     });
   }
 
-  /* Bridge */
-  var titleEl = document.querySelector('.product h2, .product_title, h1, .product-name');
-  brCall('onProductViewed',
-    (titleEl ? titleEl.textContent : '').trim(),
-    (priceEl ? priceEl.textContent : '').trim(),
-    (prodImg ? prodImg.src : '')
-  );
+  /* onProductViewed is reported by page-detector.js - not from here too. */
 }
 
 /* ──── CART ──── */
-
-function updateCartCount() {
-  var items = document.querySelectorAll('table tbody tr, .cart_item, .cart-item');
-  var n = items.length || 0;
-  if (window.__slpCartCount === n) return;
-  window.__slpCartCount = n;
-  brCall('onCartUpdated', n);
-}
 
 function enhanceCart() {
   /* Quantity steppers (+/- buttons) */
@@ -349,15 +335,26 @@ function enhanceCart() {
     inc.type = 'button'; inc.textContent = '+';
     wrap.insertBefore(dec, input);
     wrap.appendChild(inc);
-    var min = parseInt(input.min, 10) || 1;
-    var max = parseInt(input.max, 10) || 999;
+    // `parseInt(input.min) || 1` turned a legitimate min="0" into 1, so a
+    // quantity (the site's "Cancelled" count, and "Mint" on the cart page)
+    // could never be stepped back down to zero.
+    var min = parseInt(input.min, 10);
+    if (isNaN(min)) min = 0;
+    var max = parseInt(input.max, 10);
+    if (isNaN(max)) max = 9999;
     function change(by) {
-      var v = parseInt(input.value, 10) || min;
+      var v = parseInt(input.value, 10);
+      if (isNaN(v)) v = 0;
       v += by;
       if (v < min) v = min;
       if (v > max) v = max;
       input.value = v;
-      input.dispatchEvent(new Event('change', { bubbles: true }));
+      // The site validates stock through a "donetyping" plugin bound to
+      // keypress/paste/blur - it never hears `change`. Fire what it listens
+      // for, so over-ordering is flagged from the buttons as it is from typing.
+      ['input', 'keypress', 'change'].forEach(function (type) {
+        input.dispatchEvent(new Event(type, { bubbles: true }));
+      });
     }
     dec.addEventListener('click', function () { change(-1); });
     inc.addEventListener('click', function () { change(1); });
@@ -390,10 +387,7 @@ function enhanceCart() {
       var del = document.createElement('button');
       del.className = 'slp-del';
       del.textContent = 'Remove';
-      del.addEventListener('click', function () {
-        rm.click();
-        updateCartCount();
-      });
+      del.addEventListener('click', function () { rm.click(); });
       row.appendChild(del);
       setTimeout(function () { if (del.parentNode) del.remove(); }, 4000);
     }
@@ -410,8 +404,6 @@ function enhanceCart() {
     var container = document.querySelector('.woocommerce, .cart-page, .main-content, main, .content');
     if (container) container.insertBefore(banner, container.firstChild);
   }
-
-  updateCartCount();
 }
 
 /* ──── CHECKOUT ──── */
