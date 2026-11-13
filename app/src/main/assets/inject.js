@@ -69,15 +69,12 @@ var vp = document.querySelector('meta[name="viewport"]');
 if (!vp) { vp = document.createElement('meta'); vp.name = 'viewport'; slpHead.appendChild(vp); }
 vp.content = 'width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes';
 
-/* ──────── 2. PREVENT DOUBLE-TAP ZOOM ──────── */
-var lastTouchEnd = 0;
-slpOnce('doubleTapZoom', function () {
-  document.addEventListener('touchend', function (e) {
-    var now = Date.now();
-    if (now - lastTouchEnd <= 300) e.preventDefault();
-    lastTouchEnd = now;
-  }, false);
-});
+/* ──────── 2. (removed) DOUBLE-TAP ZOOM GUARD ────────
+   This used to preventDefault() any touchend within 300ms of the previous
+   one. That also cancels the click the second tap would have produced, so
+   tapping a quantity "+" twice quickly only counted once, and a fast second
+   tap on any button was swallowed. With a width=device-width viewport (set
+   above) the WebView does not double-tap-zoom in the first place. */
 
 /* ──────── 3. MATERIAL RIPPLE ──────── */
 var RIPPLE_SEL = ['button','.btn','a.button','input[type="submit"]','.add-to-cart','.add_to_cart_button','#login-btn','.btn-success','.btn-primary','.btn-info','.btn-default'].join(',');
