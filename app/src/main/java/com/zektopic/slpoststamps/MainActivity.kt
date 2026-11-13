@@ -3,39 +3,57 @@ package com.zektopic.slpoststamps
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.DownloadManager
-import android.content.pm.PackageManager
 import android.content.Intent
+import android.content.SharedPreferences
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.content.SharedPreferences
 import android.util.Base64
 import android.util.Log
+import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import android.webkit.CookieManager
+import android.webkit.JsResult
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.URLUtil
 import android.webkit.ValueCallback
-import android.webkit.WebStorage
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
+import android.webkit.WebSettings
+import android.webkit.WebStorage
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SearchView
 import androidx.core.content.ContextCompat
+import androidx.core.content.edit
+import androidx.core.net.toUri
 import androidx.core.view.GravityCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.isVisible
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.zektopic.slpoststamps.databinding.ActivityMainBinding
+import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
 
@@ -46,32 +64,51 @@ class MainActivity : AppCompatActivity() {
         /** Schemes handed to another app rather than rendered in the WebView. */
         private val EXTERNAL_SCHEMES = setOf("mailto", "tel", "sms", "smsto", "geo", "market")
 
-        private const val PREFS_NAME       = "slp_state"
-        private const val KEY_LOGGED_IN    = "logged_in"
-        private const val KEY_ACCOUNT_URL  = "account_url"
-        private const val KEY_CART_COUNT   = "cart_count"
-        private const val KEY_LAST_URL     = "last_url"
+        private const val PREFS_NAME = "slp_state"
+        private const val KEY_LOGGED_IN = "logged_in"
+        private const val KEY_ACCOUNT_URL = "account_url"
+        private const val KEY_CART_COUNT = "cart_count"
+        private const val KEY_LAST_URL = "last_url"
+
+        /** The loading screen never outlives this, whatever the page does. */
+        private const val SPLASH_TIMEOUT_MS = 12_000L
+
+        /** Page-supplied text shown in native UI is cut to these lengths. */
+        private const val MAX_DIALOG_CHARS = 600
+        private const val MAX_TITLE_CHARS = 120
+        private const val MAX_SEARCH_CHARS = 100
+    }
+
+    /** Why the main frame failed to load; drives the error screen's wording. */
+    private enum class LoadFailure(
+        @param:DrawableRes val icon: Int,
+        @param:StringRes val title: Int,
+        @param:StringRes val message: Int
+    ) {
+        OFFLINE(R.drawable.ic_no_connection, R.string.error_offline_title, R.string.error_offline_message),
+        UNREACHABLE(R.drawable.ic_no_connection, R.string.error_unreachable_title, R.string.error_unreachable_message),
+        SERVER(R.drawable.ic_error, R.string.error_server_title, R.string.error_server_message),
+        GENERIC(R.drawable.ic_error, R.string.error_generic_title, R.string.error_generic_message)
     }
 
     private lateinit var binding: ActivityMainBinding
-    private val TARGET_URL    = "https://stamps.slpost.gov.lk/"
-    private val LOGIN_URL     = "https://stamps.slpost.gov.lk/login"
-    // GET /users/register returns an empty page — registration is an inline
-    // block (#registetModal) on /login, which inject.js scrolls to via hash.
-    private val REGISTER_URL  = "https://stamps.slpost.gov.lk/login#registetModal"
-    private val LOGOUT_URL    = "https://stamps.slpost.gov.lk/logout/"
-    private val TARGET_HOST   = "stamps.slpost.gov.lk"
-    private val TARGET_SUFFIX = ".slpost.gov.lk"
-    private val DEFAULT_ACCOUNT_URL = "https://stamps.slpost.gov.lk/users/"
+    private lateinit var prefs: SharedPreferences
+    private lateinit var contentBridge: WebContentBridge
 
     // Written from the WebView JavaBridge thread, read from the UI thread.
-    @Volatile private var accountUrl: String = DEFAULT_ACCOUNT_URL
-    private var firstLoadDismissed = false
+    @Volatile private var accountUrl: String = Storefront.DEFAULT_ACCOUNT
     @Volatile private var isUserLoggedIn = false
     @Volatile private var currentPageType: PageType = PageType.UNKNOWN
     @Volatile private var cartItemCount: Int = 0
 
-    private lateinit var contentBridge: WebContentBridge
+    // UI thread only from here down.
+    private var productTitle: String? = null
+    private var splashDismissed = false
+    private var mainFrameFailed = false
+    private var lastFailure: LoadFailure? = null
+    private var webViewDestroyed = false
+    private var syncingBottomNav = false
+    private var searchItem: MenuItem? = null
 
     /** Set while a logout navigation is in flight, so local state is cleared once it settles. */
     private var pendingLogout = false
@@ -89,7 +126,19 @@ class MainActivity : AppCompatActivity() {
         val contentDisposition: String?,
         val mimeType: String?
     )
-    private lateinit var prefs: SharedPreferences
+
+    private val splashTimeout = Runnable { dismissSplash() }
+
+    /** Reloads by itself when the connection comes back while "You're offline" is showing. */
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            runOnUiThread {
+                if (mainFrameFailed && lastFailure == LoadFailure.OFFLINE) retryLoad()
+            }
+        }
+    }
+
+    // ── Lifecycle ──
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -100,9 +149,12 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // The system bars are transparent over the app's own surfaces, so
+        // their icons have to contrast with whichever theme is showing. These
+        // were hard-coded to "dark icons", which vanished on the dark theme.
         WindowInsetsControllerCompat(window, window.decorView).apply {
-            isAppearanceLightStatusBars     = true
-            isAppearanceLightNavigationBars = true
+            isAppearanceLightStatusBars = !isNightMode()
+            isAppearanceLightNavigationBars = !isNightMode()
         }
 
         setSupportActionBar(binding.toolbar)
@@ -125,79 +177,44 @@ class MainActivity : AppCompatActivity() {
         // (or by a hostile page before validation existed) must not be trusted.
         accountUrl = prefs.getString(KEY_ACCOUNT_URL, null)
             ?.takeIf { isTrustedUrl(it) }
-            ?: DEFAULT_ACCOUNT_URL
+            ?: Storefront.DEFAULT_ACCOUNT
         updateAuthMenuState(prefs.getBoolean(KEY_LOGGED_IN, false))
         cartItemCount = prefs.getInt(KEY_CART_COUNT, 0)
         updateCartBadge(cartItemCount)
 
         if (savedInstanceState != null) {
-            // Rotation / process recreation: restore the live WebView state
-            // (history, scroll, form input) instead of reloading, and skip
-            // the splash overlay.
-            firstLoadDismissed = true
-            binding.loadingOverlay.visibility = View.GONE
+            // Rotation / theme change / process recreation: restore the live
+            // WebView state (history, scroll, form input) instead of
+            // reloading, and skip the loading screen.
+            dismissSplash(animate = false)
             if (binding.webView.restoreState(savedInstanceState) == null) {
                 binding.webView.loadUrl(resumeUrl())
             }
         } else {
+            binding.loadingOverlay.postDelayed(splashTimeout, SPLASH_TIMEOUT_MS)
             binding.webView.loadUrl(resumeUrl())
         }
     }
 
-    /**
-     * True only for the storefront host or a real subdomain of it.
-     *
-     * Substring matching (`host.contains("slpost.gov.lk")`) is NOT sufficient:
-     * it also accepts attacker-controlled hosts such as
-     * `slpost.gov.lk.example.com`, which would then load inside the WebView
-     * with the SLPBridge interface attached.
-     */
-    private fun isTargetHost(host: String?): Boolean {
-        val h = host?.lowercase() ?: return false
-        return h == TARGET_HOST || h.endsWith(TARGET_SUFFIX)
+    override fun onStart() {
+        super.onStart()
+        runCatching {
+            getSystemService(ConnectivityManager::class.java)
+                ?.registerDefaultNetworkCallback(networkCallback)
+        }.onFailure { Log.w(TAG, "could not watch connectivity", it) }
     }
 
-    /** True only for an https URL on a trusted host. Rejects other schemes outright. */
-    private fun isTrustedUrl(url: String?): Boolean {
-        if (url.isNullOrBlank()) return false
-        val uri = runCatching { Uri.parse(url) }.getOrNull() ?: return false
-        return uri.scheme?.lowercase() == "https" && isTargetHost(uri.host)
-    }
-
-    /**
-     * Hands a URL to whatever app can open it. Guarded: a device with no
-     * handler for the scheme throws ActivityNotFoundException, which would
-     * otherwise take the whole app down.
-     */
-    private fun openExternally(url: String) {
-        val ok = runCatching {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-        }.isSuccess
-        if (!ok) {
-            Log.w(TAG, "openExternally: no handler for $url")
-            Toast.makeText(this, R.string.error_no_app_to_open_link, Toast.LENGTH_SHORT).show()
+    override fun onStop() {
+        runCatching {
+            getSystemService(ConnectivityManager::class.java)
+                ?.unregisterNetworkCallback(networkCallback)
         }
-    }
-
-    /**
-     * True if the URL is safe to reopen on a cold start. This site mutates
-     * state via GET (/clear-cart, /logout), so replaying the last URL blindly
-     * would empty the cart or sign the user out on next launch.
-     */
-    private fun isResumable(url: String): Boolean =
-        isTrustedUrl(url) && ResumePolicy.isResumablePath(Uri.parse(url).path)
-
-    /** Cold-start URL: resume the last visited on-site page, else home. */
-    private fun resumeUrl(): String {
-        // isResumable, not just isTrustedUrl: a URL stored by an older build
-        // was filtered against a shorter list than the current one.
-        val last = prefs.getString(KEY_LAST_URL, null)
-        return if (last != null && isResumable(last)) last else TARGET_URL
+        super.onStop()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        binding.webView.saveState(outState)
+        if (!webViewDestroyed) binding.webView.saveState(outState)
     }
 
     override fun onPause() {
@@ -207,16 +224,17 @@ class MainActivity : AppCompatActivity() {
         // synchronous here: deferring it risks losing the session if the
         // process is killed immediately after backgrounding.
         CookieManager.getInstance().flush()
+        if (webViewDestroyed) return
         binding.webView.url
             ?.takeIf { isResumable(it) }
-            ?.let { prefs.edit().putString(KEY_LAST_URL, it).apply() }
+            ?.let { url -> prefs.edit { putString(KEY_LAST_URL, url) } }
         // Suspend JS timers, animations and media while backgrounded.
         binding.webView.onPause()
     }
 
     override fun onResume() {
         super.onResume()
-        binding.webView.onResume()
+        if (!webViewDestroyed) binding.webView.onResume()
     }
 
     /**
@@ -230,16 +248,86 @@ class MainActivity : AppCompatActivity() {
      * was the bug, so do not "fix" this by suppressing recreation instead.
      */
     override fun onDestroy() {
-        binding.webView.let { web ->
-            web.removeJavascriptInterface(BRIDGE_NAME)
-            web.stopLoading()
-            web.webChromeClient = null
-            (web.parent as? ViewGroup)?.removeView(web)
-            web.removeAllViews()
-            web.destroy()
+        binding.loadingOverlay.removeCallbacks(splashTimeout)
+        filePathCallback?.onReceiveValue(null)
+        filePathCallback = null
+        if (!webViewDestroyed) {
+            webViewDestroyed = true
+            binding.webView.let { web ->
+                web.removeJavascriptInterface(BRIDGE_NAME)
+                web.stopLoading()
+                web.webChromeClient = null
+                (web.parent as? ViewGroup)?.removeView(web)
+                web.removeAllViews()
+                web.destroy()
+            }
         }
         super.onDestroy()
     }
+
+    private fun isNightMode(): Boolean =
+        (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+            Configuration.UI_MODE_NIGHT_YES
+
+    // ── URL rules ──
+
+    /** True only for an https URL on a trusted host. Rejects other schemes outright. */
+    private fun isTrustedUrl(url: String?): Boolean {
+        if (url.isNullOrBlank()) return false
+        val uri = runCatching { url.toUri() }.getOrNull() ?: return false
+        return uri.scheme?.lowercase() == "https" && Storefront.isTrustedHost(uri.host)
+    }
+
+    /**
+     * True only for an https URL on the storefront itself. This is the test
+     * for injecting our CSS and JS: `isTrustedUrl` also admits other
+     * slpost.gov.lk sites, which are not ours to restyle.
+     */
+    private fun isStorefrontUrl(url: String?): Boolean {
+        if (url.isNullOrBlank()) return false
+        val uri = runCatching { url.toUri() }.getOrNull() ?: return false
+        return uri.scheme?.lowercase() == "https" && Storefront.isStorefrontHost(uri.host)
+    }
+
+    /**
+     * True if the URL is safe to reopen on a cold start. This site mutates
+     * state via GET (/clear-cart, /logout), so replaying the last URL blindly
+     * would empty the cart or sign the user out on next launch.
+     */
+    private fun isResumable(url: String): Boolean =
+        isStorefrontUrl(url) && ResumePolicy.isResumablePath(url.toUri().path)
+
+    /** Cold-start URL: resume the last visited on-site page, else home. */
+    private fun resumeUrl(): String {
+        // isResumable, not just isTrustedUrl: a URL stored by an older build
+        // was filtered against a shorter list than the current one.
+        val last = prefs.getString(KEY_LAST_URL, null)
+        return if (last != null && isResumable(last)) last else Storefront.HOME
+    }
+
+    /** The page to share or open elsewhere: where the WebView is, without our fragments. */
+    private fun currentPageUrl(): String =
+        binding.webView.url
+            ?.takeIf { isStorefrontUrl(it) }
+            ?.substringBefore('#')
+            ?: Storefront.HOME
+
+    /**
+     * Hands a URL to whatever app can open it. Guarded: a device with no
+     * handler for the scheme throws ActivityNotFoundException, which would
+     * otherwise take the whole app down.
+     */
+    private fun openExternally(url: String) {
+        val ok = runCatching {
+            startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+        }.isSuccess
+        if (!ok) {
+            Log.w(TAG, "openExternally: no handler for the link")
+            Toast.makeText(this, R.string.error_no_app_to_open_link, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // ── Bridge (page -> app) ──
 
     private fun setupContentBridge() {
         contentBridge = WebContentBridge(
@@ -247,58 +335,70 @@ class MainActivity : AppCompatActivity() {
                 currentPageType = type
                 // Bridge callbacks arrive on the WebView JavaBridge thread;
                 // touching a View from there throws CalledFromWrongThreadException.
-                runOnUiThread { updateToolbarForPageType(type) }
+                runOnUiThread {
+                    if (type != PageType.PRODUCT_DETAIL) productTitle = null
+                    refreshSubtitle()
+                }
             },
             authStateChangedCallback = { isLoggedIn, url ->
                 // `url` is page-controlled content. Only adopt it if it is an
-                // https URL on a trusted host AND looks like an account page —
+                // https URL on the storefront AND looks like an account page —
                 // it is persisted and later handed to WebView.loadUrl().
-                if (isTrustedUrl(url) && Uri.parse(url).path?.contains("/users/view/") == true) {
+                if (isStorefrontUrl(url) && url.toUri().path?.contains("/users/view/") == true) {
                     accountUrl = url
                 }
-                prefs.edit()
-                    .putBoolean(KEY_LOGGED_IN, isLoggedIn)
-                    .putString(KEY_ACCOUNT_URL, accountUrl)
-                    .apply()
+                prefs.edit {
+                    putBoolean(KEY_LOGGED_IN, isLoggedIn)
+                    putString(KEY_ACCOUNT_URL, accountUrl)
+                }
                 if (isLoggedIn && !isUserLoggedIn) {
-                    // Just logged in — make sure the session cookie hits disk now
+                    // Just signed in — make sure the session cookie hits disk now.
                     CookieManager.getInstance().flush()
                 }
                 runOnUiThread { updateAuthMenuState(isLoggedIn) }
             },
             cartUpdatedCallback = { count ->
-                cartItemCount = count
-                prefs.edit().putInt(KEY_CART_COUNT, count).apply()
-                runOnUiThread { updateCartBadge(count) }
+                val safe = count.coerceIn(0, 999)
+                cartItemCount = safe
+                prefs.edit { putInt(KEY_CART_COUNT, safe) }
+                runOnUiThread { updateCartBadge(safe) }
             },
             productViewedCallback = { title, _, _ ->
+                val clean = title.trim().take(MAX_TITLE_CHARS).ifBlank { null }
                 runOnUiThread {
-                    if (title.isNotBlank()) {
-                        binding.toolbar.subtitle = title.take(46)
-                    }
+                    productTitle = clean
+                    refreshSubtitle()
                 }
+            },
+            pullToRefreshCallback = { enabled ->
+                runOnUiThread { binding.swipeRefreshLayout.isEnabled = enabled }
             }
         )
     }
 
-    private fun updateToolbarForPageType(type: PageType) {
-        val subtitle: CharSequence = when (type) {
-            PageType.HOME             -> getString(R.string.subtitle_default)
-            PageType.PRODUCT_LISTING  -> getString(R.string.subtitle_browse)
-            PageType.PRODUCT_DETAIL   -> binding.toolbar.subtitle ?: getString(R.string.subtitle_product)
-            PageType.CART             -> getString(R.string.subtitle_cart)
-            PageType.CHECKOUT         -> getString(R.string.subtitle_checkout)
-            PageType.LOGIN            -> getString(R.string.subtitle_login)
-            PageType.REGISTER         -> getString(R.string.subtitle_register)
-            PageType.ACCOUNT          -> getString(R.string.subtitle_account)
-            PageType.STATIC           -> getString(R.string.subtitle_static)
-            PageType.UNKNOWN          -> binding.toolbar.subtitle ?: getString(R.string.subtitle_default)
+    /**
+     * The subtitle says where the user is. It is derived from the page type
+     * and nothing else, so it cannot go stale: it used to keep a product's
+     * name after navigating to a page the detector could not classify.
+     */
+    private fun refreshSubtitle() {
+        binding.toolbar.subtitle = when (currentPageType) {
+            PageType.PRODUCT_DETAIL -> productTitle ?: getString(R.string.subtitle_product)
+            PageType.PRODUCT_LISTING -> getString(R.string.subtitle_browse)
+            PageType.CART -> getString(R.string.subtitle_cart)
+            PageType.CHECKOUT -> getString(R.string.subtitle_checkout)
+            PageType.LOGIN -> getString(R.string.subtitle_login)
+            PageType.REGISTER -> getString(R.string.subtitle_register)
+            PageType.ACCOUNT -> getString(R.string.subtitle_account)
+            PageType.STATIC -> getString(R.string.subtitle_static)
+            PageType.HOME, PageType.UNKNOWN -> getString(R.string.subtitle_default)
         }
-        binding.toolbar.subtitle = subtitle
     }
 
     private fun updateCartBadge(count: Int) {
         val badge = binding.bottomNavView.getOrCreateBadge(R.id.nav_cart)
+        badge.backgroundColor = ContextCompat.getColor(this, R.color.slp_filled)
+        badge.badgeTextColor = ContextCompat.getColor(this, R.color.slp_on_filled)
         if (count > 0) {
             badge.number = count
             badge.isVisible = true
@@ -306,6 +406,93 @@ class MainActivity : AppCompatActivity() {
             badge.isVisible = false
         }
     }
+
+    private fun updateAuthMenuState(isLoggedIn: Boolean) {
+        isUserLoggedIn = isLoggedIn
+
+        val menu = binding.navigationView.menu
+        menu.findItem(R.id.navigation_login)?.isVisible = !isLoggedIn
+        menu.findItem(R.id.navigation_signup)?.isVisible = !isLoggedIn
+        menu.findItem(R.id.navigation_account)?.isVisible = isLoggedIn
+        menu.findItem(R.id.navigation_logout)?.isVisible = isLoggedIn
+
+        binding.bottomNavView.menu.findItem(R.id.nav_account)?.title =
+            getString(if (isLoggedIn) R.string.nav_account else R.string.nav_login)
+    }
+
+    // ── Toolbar ──
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.toolbar_menu, menu)
+        val item = menu.findItem(R.id.action_search)
+        searchItem = item
+        (item?.actionView as? SearchView)?.apply {
+            queryHint = getString(R.string.search_hint)
+            maxWidth = Int.MAX_VALUE
+            setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+                override fun onQueryTextSubmit(query: String?): Boolean {
+                    val q = query?.trim().orEmpty().take(MAX_SEARCH_CHARS)
+                    if (q.isNotEmpty()) {
+                        item.collapseActionView()
+                        searchCatalog(q)
+                    }
+                    return true
+                }
+
+                override fun onQueryTextChange(newText: String?): Boolean = false
+            })
+        }
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
+        R.id.action_share -> { sharePage(); true }
+        R.id.action_refresh -> { reloadPage(); true }
+        R.id.action_open_in_browser -> { openExternally(currentPageUrl()); true }
+        else -> super.onOptionsItemSelected(item)
+    }
+
+    /**
+     * Runs the site's own catalogue search. The search lives on the home
+     * page: if that is where we are, inject.js exposes it as
+     * `window.__slpSearch`; from anywhere else, load home with the query in
+     * the fragment and inject.js picks it up there.
+     */
+    private fun searchCatalog(query: String) {
+        // JSONObject.quote yields a valid JS string literal, so the query
+        // cannot break out of it.
+        val literal = JSONObject.quote(query)
+        val js = "(function(){ if (typeof window.__slpSearch === 'function') {" +
+            " window.__slpSearch($literal); return 'handled'; } return 'absent'; })();"
+        binding.webView.evaluateJavascript(js) { result ->
+            if (result == null || !result.contains("handled")) {
+                binding.webView.loadUrl(
+                    Storefront.HOME + "#" + Storefront.SEARCH_FRAGMENT_PREFIX + Uri.encode(query)
+                )
+            }
+        }
+    }
+
+    private fun sharePage() {
+        val url = currentPageUrl()
+        val title = productTitle
+            ?.takeIf { currentPageType == PageType.PRODUCT_DETAIL }
+            ?: getString(R.string.app_name)
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, title)
+            putExtra(Intent.EXTRA_TEXT, "$title\n$url")
+        }
+        runCatching {
+            startActivity(Intent.createChooser(send, getString(R.string.share_chooser_title)))
+        }.onFailure { Log.w(TAG, "sharePage: no share target", it) }
+    }
+
+    private fun reloadPage() {
+        if (mainFrameFailed) retryLoad() else binding.webView.reload()
+    }
+
+    // ── Drawer ──
 
     private fun setupDrawer() {
         val toggle = ActionBarDrawerToggle(
@@ -317,21 +504,24 @@ class MainActivity : AppCompatActivity() {
 
         binding.navigationView.setNavigationItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.navigation_login -> binding.webView.loadUrl(LOGIN_URL)
-                R.id.navigation_signup -> binding.webView.loadUrl(REGISTER_URL)
+                R.id.navigation_login -> binding.webView.loadUrl(Storefront.SIGN_IN)
+                R.id.navigation_signup -> binding.webView.loadUrl(Storefront.REGISTER)
                 R.id.navigation_account -> binding.webView.loadUrl(accountUrl)
                 R.id.navigation_logout -> logOut()
-                R.id.navigation_payment_methods -> binding.webView.loadUrl("${TARGET_URL}payment-methods")
-                R.id.navigation_standing_order -> binding.webView.loadUrl("${TARGET_URL}how-to-create-standing-order")
-                R.id.navigation_downloads -> binding.webView.loadUrl("${TARGET_URL}downloads")
-                R.id.navigation_general_info -> binding.webView.loadUrl("${TARGET_URL}general-infor")
-                R.id.navigation_terms -> binding.webView.loadUrl("${TARGET_URL}terms-and-conditions/")
-                R.id.navigation_contact -> binding.webView.loadUrl("${TARGET_URL}contact-us/")
+                R.id.navigation_payment_methods -> binding.webView.loadUrl("${Storefront.HOME}payment-methods")
+                R.id.navigation_standing_order -> binding.webView.loadUrl("${Storefront.HOME}how-to-create-standing-order")
+                R.id.navigation_downloads -> binding.webView.loadUrl("${Storefront.HOME}downloads")
+                R.id.navigation_general_info -> binding.webView.loadUrl("${Storefront.HOME}general-infor")
+                R.id.navigation_terms -> binding.webView.loadUrl("${Storefront.HOME}terms-and-conditions/")
+                R.id.navigation_contact -> binding.webView.loadUrl("${Storefront.HOME}contact-us/")
             }
             binding.drawerLayout.closeDrawer(GravityCompat.START)
-            true
+            // Drawer rows are actions, not destinations: leave none checked.
+            false
         }
     }
+
+    // ── WebView ──
 
     private fun setupWebView() {
         binding.webView.setBackgroundColor(ContextCompat.getColor(this, R.color.md_background))
@@ -347,18 +537,20 @@ class MainActivity : AppCompatActivity() {
             // Never load http subresources into an https page. The platform
             // default (cleartext blocked) only applies from API 28, and minSdk
             // here is 24, so this must be set explicitly.
-            mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
 
-            // These are already safe by default at targetSdk 36, but pin them
-            // so a future targetSdk change cannot silently reopen them.
+            // These are already safe by default at this targetSdk, but pin
+            // them so a future targetSdk change cannot silently reopen them.
             allowFileAccess = false
             allowContentAccess = false
+            @Suppress("DEPRECATION")
             allowFileAccessFromFileURLs = false
+            @Suppress("DEPRECATION")
             allowUniversalAccessFromFileURLs = false
-        }
 
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            binding.webView.settings.safeBrowsingEnabled = true
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                safeBrowsingEnabled = true
+            }
         }
 
         // Session persistence: accept cookies (site login is cookie-based) so
@@ -366,275 +558,392 @@ class MainActivity : AppCompatActivity() {
         CookieManager.getInstance().setAcceptCookie(true)
 
         binding.webView.addJavascriptInterface(contentBridge, BRIDGE_NAME)
+        binding.webView.webViewClient = StorefrontWebViewClient()
+        binding.webView.webChromeClient = StorefrontChromeClient()
+    }
 
-        binding.webView.webViewClient = object : WebViewClient() {
-            /**
-             * Default-deny. Only https on a trusted host stays in the WebView;
-             * off-site http(s) is handed to the browser; every other scheme
-             * (content://, intent://, blob:, file:, …) is dropped.
-             */
-            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                val uri = request?.url ?: return false
-                val url = uri.toString()
+    private inner class StorefrontWebViewClient : WebViewClient() {
 
-                if (isTrustedUrl(url)) return false
+        /**
+         * Default-deny. Only https on a trusted host stays in the WebView;
+         * off-site http(s) is handed to the browser; every other scheme
+         * (content://, intent://, blob:, file:, …) is dropped.
+         */
+        override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+            val uri = request?.url ?: return false
+            val url = uri.toString()
 
-                val scheme = uri.scheme?.lowercase()
-                // Off-site web links, and the handful of schemes a content page
-                // legitimately uses, go to the relevant app. Everything else
-                // (intent://, content://, file://, blob:, javascript: …) is
-                // dropped rather than handed back to the WebView, which would
-                // render ERR_UNKNOWN_URL_SCHEME.
-                if (scheme == "http" || scheme == "https" || scheme in EXTERNAL_SCHEMES) {
-                    openExternally(url)
-                    return true
-                }
-                Log.w(TAG, "shouldOverrideUrlLoading: dropped scheme=$scheme")
+            // www.stamps.slpost.gov.lk and http:// links are the same shop,
+            // but neither loads here (bad certificate; cleartext is blocked).
+            if (Storefront.needsCanonicalising(uri.scheme, uri.host)) {
+                val fixed = uri.buildUpon().scheme("https").encodedAuthority(Storefront.HOST).build()
+                view?.loadUrl(fixed.toString())
                 return true
             }
 
-            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                super.onPageStarted(view, url, favicon)
-                binding.progressBar.visibility = View.VISIBLE
-                binding.errorView.visibility = View.GONE
-                binding.swipeRefreshLayout.visibility = View.VISIBLE
+            if (isTrustedUrl(url)) return false
+
+            val scheme = uri.scheme?.lowercase()
+            // Off-site web links, and the handful of schemes a content page
+            // legitimately uses, go to the relevant app. Everything else
+            // (intent://, content://, file://, blob:, javascript: …) is
+            // dropped rather than handed back to the WebView, which would
+            // render ERR_UNKNOWN_URL_SCHEME.
+            if (scheme == "http" || scheme == "https" || scheme in EXTERNAL_SCHEMES) {
+                openExternally(url)
+                return true
             }
+            Log.w(TAG, "shouldOverrideUrlLoading: dropped scheme=$scheme")
+            return true
+        }
 
-            override fun onPageCommitVisible(view: WebView?, url: String?) {
-                super.onPageCommitVisible(view, url)
-                // The new document exists but hasn't been drawn yet — injecting
-                // here styles the page before the raw site is ever visible.
-                injectAssetCss(view, "inject.css")
-                injectPageDetector(view)
+        override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+            super.onPageStarted(view, url, favicon)
+            mainFrameFailed = false
+            binding.progressBar.isVisible = true
+            // A page may have suspended pull-to-refresh; the next one starts clean.
+            binding.swipeRefreshLayout.isEnabled = true
+            // The error screen, if showing, stays until the new page has
+            // something to draw. Swapping to the WebView here flashed the
+            // browser's own "Webpage not available" page on every retry.
+        }
+
+        override fun onPageCommitVisible(view: WebView?, url: String?) {
+            super.onPageCommitVisible(view, url)
+            if (mainFrameFailed) return
+            // The new document exists but hasn't been drawn yet — injecting
+            // here styles the page before the raw site is ever visible.
+            injectCss(view)
+            injectPageDetector(view)
+            showContent()
+            // Give the stylesheet a beat to apply before the curtain lifts.
+            binding.loadingOverlay.postDelayed({ dismissSplash() }, 150)
+        }
+
+        override fun onPageFinished(view: WebView?, url: String?) {
+            super.onPageFinished(view, url)
+            binding.swipeRefreshLayout.isRefreshing = false
+
+            // The logout navigation has settled; the request carried the
+            // session cookie, so it is now safe to clear it locally.
+            clearLocalSession()
+
+            if (mainFrameFailed) return
+
+            // Re-inject CSS to override any late-loaded site styles, then the
+            // page detector and the UX script in one evaluation so detection
+            // has run before inject.js reads its result.
+            injectCss(view)
+            injectCombinedJs(view)
+            syncBottomNavToUrl(url)
+            showContent()
+            dismissSplash()
+        }
+
+        override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+            super.onReceivedError(view, request, error)
+            if (request?.isForMainFrame != true) return
+            val code = error?.errorCode ?: ERROR_UNKNOWN
+            val connectivity = code == ERROR_HOST_LOOKUP || code == ERROR_CONNECT ||
+                code == ERROR_TIMEOUT || code == ERROR_IO
+            val failure = when {
+                !isOnline() -> LoadFailure.OFFLINE
+                connectivity -> LoadFailure.UNREACHABLE
+                else -> LoadFailure.GENERIC
             }
+            showErrorState(failure, error?.description?.toString())
+        }
 
-            override fun onPageFinished(view: WebView?, url: String?) {
-                super.onPageFinished(view, url)
-                binding.swipeRefreshLayout.isRefreshing = false
-
-                // Re-inject CSS to override any late-loaded site styles
-                injectAssetCss(view, "inject.css")
-
-                // Inject combined JS: page detector first, then UX enhancements.
-                // Combined into a single evaluateJavascript call so page detection
-                // runs and sets window.__SLP_PAGE_TYPE__ before inject.js reads it.
-                injectCombinedJs(view)
-
-                // Keep bottom nav in sync with the current URL
-                syncBottomNavToUrl(url)
-
-                // The logout navigation has settled; the request carried the
-                // session cookie, so it is now safe to clear it locally.
-                clearLocalSession()
-
-                if (!firstLoadDismissed) {
-                    firstLoadDismissed = true
-                    binding.loadingOverlay.animate()
-                        .alpha(0f)
-                        .setDuration(600)
-                        .setStartDelay(300)
-                        .withEndAction { binding.loadingOverlay.visibility = View.GONE }
-                        .start()
-                }
-            }
-
-            override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
-                super.onReceivedError(view, request, error)
-                if (request?.isForMainFrame == true) {
-                    showErrorState()
-                }
-            }
-
-            override fun onReceivedHttpError(
-                view: WebView?,
-                request: WebResourceRequest?,
-                errorResponse: android.webkit.WebResourceResponse?
-            ) {
-                super.onReceivedHttpError(view, request, errorResponse)
-                // Without this a 5xx renders the raw server error page inside
-                // the app chrome as though it were a normal screen.
-                val status = errorResponse?.statusCode ?: return
-                if (request?.isForMainFrame == true && status >= 500) {
-                    showErrorState()
-                }
+        override fun onReceivedHttpError(
+            view: WebView?,
+            request: WebResourceRequest?,
+            errorResponse: WebResourceResponse?
+        ) {
+            super.onReceivedHttpError(view, request, errorResponse)
+            // Without this a 5xx renders the raw server error page inside
+            // the app chrome as though it were a normal screen.
+            val status = errorResponse?.statusCode ?: return
+            if (request?.isForMainFrame == true && status >= 500) {
+                showErrorState(LoadFailure.SERVER, getString(R.string.error_http_status, status))
             }
         }
 
-        binding.webView.webChromeClient = object : WebChromeClient() {
-            override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                super.onProgressChanged(view, newProgress)
-                binding.progressBar.progress = newProgress
-                binding.progressBar.visibility = if (newProgress == 100) View.GONE else View.VISIBLE
-            }
-
-            override fun onShowFileChooser(
-                webView: WebView?,
-                callback: ValueCallback<Array<Uri>>?,
-                params: FileChooserParams?
-            ): Boolean {
-                // Answer any previous outstanding callback first, otherwise the
-                // WebView refuses to open the picker again.
-                filePathCallback?.onReceiveValue(null)
-                filePathCallback = callback
-
-                val intent = params?.createIntent()
-                if (intent == null) {
-                    filePathCallback = null
-                    return false
-                }
-                return runCatching {
-                    fileChooserLauncher.launch(intent)
-                    true
-                }.getOrElse {
-                    Log.w(TAG, "onShowFileChooser: no picker available", it)
-                    filePathCallback = null
-                    callback?.onReceiveValue(null)
-                    false
+        /**
+         * The system kills a WebView's renderer when memory is short, most
+         * often while the app is in the background. Returning false here (the
+         * default) crashes the app the next time it is opened. Throw the dead
+         * WebView away and rebuild the Activity around a fresh one instead.
+         */
+        override fun onRenderProcessGone(view: WebView?, detail: RenderProcessGoneDetail?): Boolean {
+            val crashed = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && detail?.didCrash() == true
+            Log.w(TAG, "WebView renderer gone (crashed=$crashed); recreating")
+            if (!webViewDestroyed) {
+                webViewDestroyed = true
+                view?.let { web ->
+                    (web.parent as? ViewGroup)?.removeView(web)
+                    web.destroy()
                 }
             }
+            if (!isFinishing && !isDestroyed) recreate()
+            return true
+        }
+    }
 
-            override fun onReceivedTitle(view: WebView?, title: String?) {
-                super.onReceivedTitle(view, title)
-                // Only override if the bridge hasn't already set a page-type-aware subtitle
-                if (currentPageType == PageType.UNKNOWN || currentPageType == PageType.HOME) {
-                    val url = view?.url ?: ""
-                    val isHome = url.trimEnd('/') == TARGET_URL.trimEnd('/')
-                    val subtitle = when {
-                        isHome || title.isNullOrBlank() -> getString(R.string.subtitle_default)
-                        title.length > 46               -> title.take(43) + "…"
-                        else                            -> title
-                    }
-                    binding.toolbar.subtitle = subtitle
-                }
+    private inner class StorefrontChromeClient : WebChromeClient() {
+
+        override fun onProgressChanged(view: WebView?, newProgress: Int) {
+            super.onProgressChanged(view, newProgress)
+            val bar = binding.progressBar
+            // Animate forwards only: a new load starts back at a low value.
+            bar.setProgressCompat(newProgress, newProgress > bar.progress)
+            bar.isVisible = newProgress < 100
+        }
+
+        override fun onShowFileChooser(
+            webView: WebView?,
+            callback: ValueCallback<Array<Uri>>?,
+            params: FileChooserParams?
+        ): Boolean {
+            // Answer any previous outstanding callback first, otherwise the
+            // WebView refuses to open the picker again.
+            filePathCallback?.onReceiveValue(null)
+            filePathCallback = callback
+
+            val intent = params?.createIntent()
+            if (intent == null) {
+                filePathCallback = null
+                return false
             }
+            return runCatching {
+                fileChooserLauncher.launch(intent)
+                true
+            }.getOrElse {
+                Log.w(TAG, "onShowFileChooser: no picker available", it)
+                filePathCallback = null
+                callback?.onReceiveValue(null)
+                false
+            }
+        }
+
+        // alert() and confirm() as app dialogs. The stock ones are titled
+        // "The page at https://stamps.slpost.gov.lk says", which reads like
+        // an error from somewhere else.
+
+        override fun onJsAlert(view: WebView?, url: String?, message: String?, result: JsResult?): Boolean =
+            showPageDialog(message, result, withCancel = false)
+
+        override fun onJsConfirm(view: WebView?, url: String?, message: String?, result: JsResult?): Boolean =
+            showPageDialog(message, result, withCancel = true)
+    }
+
+    /**
+     * Shows a dialog raised by page JavaScript. The result MUST be answered
+     * exactly once on every path - an unanswered JsResult leaves the page's
+     * JavaScript blocked for good.
+     */
+    private fun showPageDialog(message: String?, result: JsResult?, withCancel: Boolean): Boolean {
+        if (result == null) return false
+        if (isFinishing || isDestroyed) {
+            result.cancel()
+            return true
+        }
+        var answered = false
+        val builder = MaterialAlertDialogBuilder(this)
+            .setMessage(message.orEmpty().take(MAX_DIALOG_CHARS))
+            .setPositiveButton(R.string.dialog_ok) { _, _ ->
+                answered = true
+                result.confirm()
+            }
+            .setOnDismissListener {
+                if (!answered) result.cancel()
+            }
+        if (withCancel) {
+            builder.setNegativeButton(R.string.dialog_cancel) { _, _ ->
+                answered = true
+                result.cancel()
+            }
+        }
+        return runCatching { builder.show(); true }.getOrElse {
+            result.cancel()
+            true
         }
     }
 
     private fun setupSwipeRefresh() {
         binding.swipeRefreshLayout.setColorSchemeColors(
             ContextCompat.getColor(this, R.color.md_primary),
-            ContextCompat.getColor(this, R.color.md_secondary),
-            ContextCompat.getColor(this, R.color.md_tertiary)
+            ContextCompat.getColor(this, R.color.md_secondary)
         )
         binding.swipeRefreshLayout.setProgressBackgroundColorSchemeColor(
-            ContextCompat.getColor(this, R.color.md_surface)
+            ContextCompat.getColor(this, R.color.md_surface_container_high)
         )
-        binding.swipeRefreshLayout.setOnRefreshListener {
-            binding.webView.reload()
-        }
+        binding.swipeRefreshLayout.setOnRefreshListener { binding.webView.reload() }
     }
 
     private fun setupBackButtonHandler() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (binding.drawerLayout.isDrawerOpen(GravityCompat.START)) {
-                    binding.drawerLayout.closeDrawer(GravityCompat.START)
-                } else if (binding.webView.canGoBack()) {
-                    binding.webView.goBack()
-                } else {
-                    isEnabled = false
-                    onBackPressedDispatcher.onBackPressed()
+                val search = searchItem
+                when {
+                    binding.drawerLayout.isDrawerOpen(GravityCompat.START) ->
+                        binding.drawerLayout.closeDrawer(GravityCompat.START)
+                    search != null && search.isActionViewExpanded -> search.collapseActionView()
+                    binding.webView.canGoBack() -> binding.webView.goBack()
+                    else -> {
+                        isEnabled = false
+                        onBackPressedDispatcher.onBackPressed()
+                    }
                 }
             }
         })
     }
 
+    // ── Bottom bar ──
+
     private fun setupBottomNav() {
         binding.bottomNavView.setOnItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.nav_home -> binding.webView.loadUrl(TARGET_URL)
-
-                R.id.nav_browse -> browseCatalog()
-
-                R.id.nav_cart -> navigateToCart()
-
-                R.id.nav_account -> {
-                    if (isUserLoggedIn) binding.webView.loadUrl(accountUrl)
-                    else               binding.webView.loadUrl(LOGIN_URL)
-                }
-            }
+            if (!syncingBottomNav) openTab(item.itemId)
             true
         }
-
-        binding.bottomNavView.setOnItemReselectedListener { /* no-op */ }
+        // Tapping the tab you are on: back to the top of its page, or back to
+        // its page if you have wandered off it.
+        binding.bottomNavView.setOnItemReselectedListener { item ->
+            if (syncingBottomNav) return@setOnItemReselectedListener
+            if (item.itemId != R.id.nav_browse && isAtTabRoot(item.itemId)) {
+                binding.webView.evaluateJavascript(
+                    "window.scrollTo({ top: 0, behavior: 'smooth' });", null
+                )
+            } else {
+                openTab(item.itemId)
+            }
+        }
     }
 
-    private fun navigateToCart() {
-        binding.webView.loadUrl("https://stamps.slpost.gov.lk/cart-view")
+    private fun openTab(itemId: Int) {
+        when (itemId) {
+            R.id.nav_home -> binding.webView.loadUrl(Storefront.HOME)
+            R.id.nav_browse -> browseCatalog()
+            R.id.nav_cart -> binding.webView.loadUrl(Storefront.CART)
+            R.id.nav_account ->
+                binding.webView.loadUrl(if (isUserLoggedIn) accountUrl else Storefront.SIGN_IN)
+        }
+    }
+
+    private fun isAtTabRoot(itemId: Int): Boolean {
+        if (mainFrameFailed) return false
+        val here = binding.webView.url?.substringBefore('#')?.substringBefore('?')?.trimEnd('/') ?: return false
+        val root = when (itemId) {
+            R.id.nav_home -> Storefront.HOME
+            R.id.nav_cart -> Storefront.CART
+            R.id.nav_account -> if (isUserLoggedIn) accountUrl else Storefront.SIGN_IN
+            else -> return false
+        }
+        return here == root.trimEnd('/')
     }
 
     /**
-     * Browse = the product catalog section on the home page. If we're already
-     * there, scroll to it; otherwise load home with the #slp-browse hash that
-     * inject.js scrolls to after the page renders.
+     * Browse = the product catalogue section on the home page. If we're already
+     * there, scroll to it; otherwise load home with the #slp-browse fragment
+     * that inject.js scrolls to after the page renders.
      */
     private fun browseCatalog() {
         val js = """(function(){
             if (location.pathname !== '/') return 'navigate';
-            var t = document.querySelector('.nav-tabs, .features_items, .catagories-heading');
+            var t = document.querySelector('.category-tab, .nav-tabs, #resultPanel');
             if (!t) return 'navigate';
             t.scrollIntoView({ behavior: 'smooth', block: 'start' });
             return 'scrolled';
         })();"""
         binding.webView.evaluateJavascript(js) { result ->
             if (result == null || !result.contains("scrolled")) {
-                binding.webView.loadUrl("$TARGET_URL#slp-browse")
+                binding.webView.loadUrl("${Storefront.HOME}#${Storefront.BROWSE_FRAGMENT}")
             }
         }
     }
 
+    /** Highlights the tab the current page belongs to, without navigating. */
     private fun syncBottomNavToUrl(url: String?) {
-        val u = url ?: return
-        val id = when {
-            u.contains("/orders") || u.contains("/cart")   -> R.id.nav_cart
-            u.contains("/users/") || u.contains("/login")  -> R.id.nav_account
-            else                                           -> R.id.nav_home
+        val uri = url?.takeIf { isStorefrontUrl(it) }?.toUri() ?: return
+        val id = when (BottomTab.forLocation(uri.path, uri.fragment)) {
+            BottomTab.HOME -> R.id.nav_home
+            BottomTab.BROWSE -> R.id.nav_browse
+            BottomTab.CART -> R.id.nav_cart
+            BottomTab.ACCOUNT -> R.id.nav_account
         }
-        binding.bottomNavView.setOnItemSelectedListener(null)
-        binding.bottomNavView.selectedItemId = id
-        setupBottomNav()
+        if (binding.bottomNavView.selectedItemId == id) return
+        syncingBottomNav = true
+        try {
+            binding.bottomNavView.selectedItemId = id
+        } finally {
+            syncingBottomNav = false
+        }
+    }
+
+    // ── Loading and error states ──
+
+    private fun dismissSplash(animate: Boolean = true) {
+        if (splashDismissed) return
+        splashDismissed = true
+        val overlay = binding.loadingOverlay
+        overlay.removeCallbacks(splashTimeout)
+        if (!animate) {
+            overlay.visibility = View.GONE
+            return
+        }
+        overlay.animate()
+            .alpha(0f)
+            .setDuration(250)
+            .withEndAction { overlay.visibility = View.GONE }
+            .start()
+    }
+
+    private fun showContent() {
+        binding.errorView.visibility = View.GONE
+        binding.swipeRefreshLayout.visibility = View.VISIBLE
+        binding.retryButton.isEnabled = true
+    }
+
+    private fun isOnline(): Boolean {
+        val cm = getSystemService(ConnectivityManager::class.java) ?: return true
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
 
     /**
-     * onReceivedError previously showed the error view but left the splash
-     * overlay up. loadingOverlay is the last child of the CoordinatorLayout at
-     * match_parent, so it drew over everything - including the retry button -
-     * and was only dismissed in onPageFinished, which may not fire on a failed
-     * first load. Dismissing it here gives the user a way out regardless.
+     * Replaces the page with an explanation and a way to retry. Also lifts
+     * the loading screen: on a failed first load nothing else would, and it
+     * would sit on top of the retry button.
      */
-    private fun showErrorState() {
-        firstLoadDismissed = true
-        binding.loadingOverlay.visibility = View.GONE
+    private fun showErrorState(failure: LoadFailure, detail: String?) {
+        mainFrameFailed = true
+        lastFailure = failure
+        dismissSplash(animate = false)
+
+        binding.errorIcon.setImageResource(failure.icon)
+        binding.errorTitle.setText(failure.title)
+        binding.errorMessage.setText(failure.message)
+        binding.errorDetail.text = detail.orEmpty().take(MAX_TITLE_CHARS)
+        binding.errorDetail.isVisible = !detail.isNullOrBlank()
+        binding.retryButton.isEnabled = true
+
         binding.swipeRefreshLayout.visibility = View.GONE
-        binding.errorView.visibility = View.VISIBLE
         binding.swipeRefreshLayout.isRefreshing = false
-        binding.progressBar.visibility = View.GONE
+        binding.errorView.visibility = View.VISIBLE
+        binding.progressBar.isVisible = false
         clearLocalSession()
     }
 
     private fun setupRetryButton() {
-        binding.retryButton.setOnClickListener {
-            binding.errorView.visibility = View.GONE
-            binding.swipeRefreshLayout.visibility = View.VISIBLE
-            binding.webView.reload()
-        }
+        binding.retryButton.setOnClickListener { retryLoad() }
     }
 
-    // ── Auth state is now driven by the bridge (JS → Kotlin) instead of polling ──
-
-    private fun updateAuthMenuState(isLoggedIn: Boolean) {
-        isUserLoggedIn = isLoggedIn
-
-        val menu = binding.navigationView.menu
-        menu.findItem(R.id.navigation_login)?.isVisible   = !isLoggedIn
-        menu.findItem(R.id.navigation_signup)?.isVisible  = !isLoggedIn
-        menu.findItem(R.id.navigation_account)?.isVisible = isLoggedIn
-        menu.findItem(R.id.navigation_logout)?.isVisible  = isLoggedIn
-
-        binding.bottomNavView.menu.findItem(R.id.nav_account)?.title =
-            getString(if (isLoggedIn) R.string.nav_account else R.string.nav_login)
+    private fun retryLoad() {
+        if (webViewDestroyed) return
+        // Disabled until the attempt resolves; onPageStarted shows progress.
+        binding.retryButton.isEnabled = false
+        binding.webView.reload()
     }
-
 
     // ── Activity result plumbing ──
 
@@ -693,7 +1002,7 @@ class MainActivity : AppCompatActivity() {
             PackageManager.PERMISSION_GRANTED
 
     private fun enqueueDownload(download: PendingDownload) {
-        // Only download from the storefront - a hostile page must not be able
+        // Only download from Sri Lanka Post - a hostile page must not be able
         // to make the app fetch arbitrary hosts with the user's cookies.
         if (!isTrustedUrl(download.url)) {
             Log.w(TAG, "enqueueDownload: refusing untrusted URL")
@@ -703,7 +1012,7 @@ class MainActivity : AppCompatActivity() {
             download.url, download.contentDisposition, download.mimeType
         )
         val ok = runCatching {
-            val request = DownloadManager.Request(Uri.parse(download.url)).apply {
+            val request = DownloadManager.Request(download.url.toUri()).apply {
                 setMimeType(download.mimeType)
                 download.userAgent?.let { addRequestHeader("User-Agent", it) }
                 // Carry the session cookie so authenticated receipts and
@@ -730,22 +1039,18 @@ class MainActivity : AppCompatActivity() {
     // ── Logout ──
 
     /**
-     * Navigating to /logout/ is not enough on its own: the server redirects to
-     * "/", which the detector classifies as HOME, and extractAuthState() only
-     * runs on LOGIN/REGISTER/ACCOUNT - so no auth callback ever arrived and the
-     * app stayed "signed in" forever, including across restarts.
-     *
-     * Local state is therefore reset here rather than waiting on the bridge,
-     * and the cookie jar is cleared once the navigation settles (in
-     * onPageFinished or onReceivedError) so the outbound request still carries
-     * the session cookie the server needs in order to invalidate it.
+     * Navigating to /logout/ is not enough on its own: local state is reset
+     * here rather than waiting on the bridge, and the cookie jar is cleared
+     * once the navigation settles (in onPageFinished or on an error) so the
+     * outbound request still carries the session cookie the server needs in
+     * order to invalidate it.
      */
     private fun logOut() {
         pendingLogout = true
-        binding.webView.loadUrl(LOGOUT_URL)
-        accountUrl = DEFAULT_ACCOUNT_URL
+        binding.webView.loadUrl(Storefront.LOGOUT)
+        accountUrl = Storefront.DEFAULT_ACCOUNT
         cartItemCount = 0
-        prefs.edit().clear().apply()
+        prefs.edit { clear() }
         updateAuthMenuState(false)
         updateCartBadge(0)
     }
@@ -758,68 +1063,102 @@ class MainActivity : AppCompatActivity() {
         WebStorage.getInstance().deleteAllData()
     }
 
-    // ── Asset injection helpers ──
+    // ── Asset injection ──
+    //
+    // The three scripts are built once and reused. They used to be read from
+    // the APK and re-encoded on every page - twice per page for the
+    // stylesheet - on the UI thread.
+
+    private val isDebuggable: Boolean by lazy {
+        (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+    }
 
     /**
-     * Injects the stylesheet as a Base64 payload so no character in the CSS
-     * can break the surrounding JS string literal.
+     * Installs inject.css and marks <html> with the current theme.
+     *
+     * The stylesheet travels as Base64 so that no character in it can break
+     * the surrounding JS string literal.
      */
-    private fun injectAssetCss(view: WebView?, filename: String) {
-        val css = readAsset(filename) ?: run {
-            Log.w(TAG, "injectAssetCss: asset $filename not found")
-            return
-        }
+    private val cssInjectorJs: String? by lazy {
+        val css = readAsset("inject.css") ?: return@lazy null
         val b64 = Base64.encodeToString(css.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
-        val js = """(function(){
+        """(function(){
             try {
+                document.documentElement.classList.toggle('slp-dark', ${isNightMode()});
+                var existing = document.getElementById('slp-injected-css');
+                if (existing && existing.getAttribute('data-len') === '${b64.length}') {
+                    // Already installed for this document: move it back to the
+                    // end so it still follows any stylesheet added since.
+                    existing.parentNode.appendChild(existing);
+                    return 'css-kept';
+                }
                 var css = new TextDecoder('utf-8').decode(
                     Uint8Array.from(atob('$b64'), function(c){ return c.charCodeAt(0); }));
-                var existing = document.getElementById('slp-injected-css');
                 if (existing) { existing.remove(); }
                 var s = document.createElement('style');
                 s.id = 'slp-injected-css';
+                s.setAttribute('data-len', '${b64.length}');
                 s.textContent = css;
                 (document.head || document.documentElement).appendChild(s);
                 return 'css-ok';
             } catch (e) { return 'css-error: ' + e.message; }
         })();"""
-        view?.evaluateJavascript(js) { result -> Log.d(TAG, "injectAssetCss($filename): $result") }
+    }
+
+    private val pageDetectorJs: String? by lazy {
+        readAsset("page-detector.js")?.let { wrapForLogging(it, "page-detector") }
     }
 
     /**
-     * Injects page-detector.js at first paint (onPageCommitVisible) so the
-     * body class (slp-page-*) is set before the user sees the page.
+     * page-detector.js and inject.js in a single evaluation, so that page
+     * detection has set window.__SLP_PAGE_TYPE__ before inject.js reads it —
+     * two separate evaluateJavascript calls give no such ordering.
+     */
+    private val combinedJs: String? by lazy {
+        val detector = readAsset("page-detector.js") ?: return@lazy null
+        val inject = readAsset("inject.js") ?: return@lazy null
+        // inject.js can run a getComputedStyle sweep over the whole page and
+        // log one bridge message per full-viewport element. Useful for chasing
+        // a blank screen, far too chatty for release - and it shares the
+        // bridge-call budget with the cart and auth callbacks. Debug only.
+        val prelude = "window.__SLP_DIAG__ = $isDebuggable;\n"
+        wrapForLogging("$prelude$detector\n$inject", "combined")
+    }
+
+    /** Our CSS and JS go into the storefront's pages and nobody else's. */
+    private fun canInject(view: WebView?): Boolean = view != null && isStorefrontUrl(view.url)
+
+    private fun injectCss(view: WebView?) {
+        if (!canInject(view)) return
+        val js = cssInjectorJs ?: return
+        view?.evaluateJavascript(js) { result ->
+            if (result?.contains("error") == true) Log.w(TAG, "injectCss: $result")
+        }
+    }
+
+    /**
+     * Runs page-detector.js at first paint (onPageCommitVisible) so the body
+     * class (slp-page-*) is set before the user sees the page.
      */
     private fun injectPageDetector(view: WebView?) {
-        val js = readAsset("page-detector.js") ?: return
-        injectJsWithLogging(view, js, "page-detector")
+        if (!canInject(view)) return
+        val js = pageDetectorJs ?: return
+        view?.evaluateJavascript(js, null)
     }
 
-    /**
-     * Combines page-detector.js and inject.js into a single evaluation so that
-     * page detection runs and sets window.__SLP_PAGE_TYPE__ before inject.js
-     * reads it — avoiding async ordering issues between separate evaluateJavascript calls.
-     */
     private fun injectCombinedJs(view: WebView?) {
-        val detector = readAsset("page-detector.js") ?: ""
-        val inject   = readAsset("inject.js") ?: ""
-        // inject.js runs a getComputedStyle sweep over the whole page and logs
-        // one bridge message per full-viewport element. Useful for chasing a
-        // black screen, far too chatty for release - and it shares the 400-call
-        // bridge budget with the cart and auth callbacks, so left on it can
-        // silently starve them. Opt in on debuggable builds only.
-        val debuggable =
-            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        val prelude = "window.__SLP_DIAG__ = $debuggable;\n"
-        injectJsWithLogging(view, "$prelude$detector\n$inject", "combined")
+        if (!canInject(view)) return
+        val js = combinedJs ?: return
+        view?.evaluateJavascript(js) { result ->
+            if (result?.contains("error") == true) Log.w(TAG, "injectCombinedJs: $result")
+        }
     }
 
     /**
-     * Runs the script in an IIFE with a try/catch so failures surface in
+     * Wraps a script in an IIFE with a try/catch so failures surface in
      * logcat (tag MainActivity / WebContentBridge) instead of dying silently.
      */
-    private fun injectJsWithLogging(view: WebView?, script: String, label: String) {
-        val wrapped = """(function(){
+    private fun wrapForLogging(script: String, label: String): String = """(function(){
             try {
                 $script
                 return '$label-ok';
@@ -828,14 +1167,9 @@ class MainActivity : AppCompatActivity() {
                 return '$label-error: ' + e.message;
             }
         })();"""
-        view?.evaluateJavascript(wrapped) { result -> Log.d(TAG, "inject($label): $result") }
-    }
 
-    private fun readAsset(filename: String): String? {
-        return try {
-            assets.open(filename).bufferedReader().use { it.readText() }
-        } catch (e: Exception) {
-            null
-        }
-    }
+    private fun readAsset(filename: String): String? =
+        runCatching { assets.open(filename).bufferedReader().use { it.readText() } }
+            .onFailure { Log.w(TAG, "readAsset: $filename missing", it) }
+            .getOrNull()
 }

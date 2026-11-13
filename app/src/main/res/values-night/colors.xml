@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dark palette. Same names as values/colors.xml; see the note there. -->
+<resources>
+    <color name="md_primary">#FFB3B2</color>
+    <color name="md_on_primary">#680014</color>
+    <color name="md_primary_container">#900A22</color>
+    <color name="md_on_primary_container">#FFDAD9</color>
+
+    <color name="md_secondary">#FEB959</color>
+    <color name="md_on_secondary">#462A00</color>
+    <color name="md_secondary_container">#643F00</color>
+    <color name="md_on_secondary_container">#FFDDB5</color>
+
+    <color name="md_tertiary">#9CCAFF</color>
+    <color name="md_on_tertiary">#003257</color>
+    <color name="md_tertiary_container">#00497B</color>
+    <color name="md_on_tertiary_container">#D0E4FF</color>
+
+    <color name="md_background">#171213</color>
+    <color name="md_on_background">#ECE0E0</color>
+    <color name="md_surface">#171213</color>
+    <color name="md_on_surface">#ECE0E0</color>
+    <color name="md_surface_variant">#524343</color>
+    <color name="md_on_surface_variant">#D7C1C1</color>
+    <color name="md_surface_container_lowest">#110D0E</color>
+    <color name="md_surface_container_low">#1F1A1B</color>
+    <color name="md_surface_container">#231E1F</color>
+    <color name="md_surface_container_high">#2E2829</color>
+    <color name="md_surface_container_highest">#393334</color>
+
+    <color name="md_outline">#A08C8C</color>
+    <color name="md_outline_variant">#524343</color>
+
+    <color name="md_error">#FFB4AB</color>
+    <color name="md_on_error">#690005</color>
+    <color name="md_error_container">#93000A</color>
+    <color name="md_on_error_container">#FFDAD6</color>
+
+    <color name="slp_chrome">#1F1A1B</color>
+    <color name="slp_filled">#B4263B</color>
+    <color name="slp_on_filled">#FFFFFF</color>
+</resources>

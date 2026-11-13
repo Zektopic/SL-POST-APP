@@ -49,6 +49,17 @@ function el(tag, className, text) {
 var pageType = window.__SLP_PAGE_TYPE__ || 'UNKNOWN';
 var jq = window.jQuery;
 
+/* The app wraps the WebView in pull-to-refresh, which only knows the
+   page's own scroll position. While something of ours or the site's is
+   open on top of the page and is dragged vertically, a downward drag
+   would reload the page underneath it - so ask the app to stand down. */
+function setPullToRefresh(enabled) {
+  var b = window.SLPBridge;
+  if (b && typeof b.setPullToRefreshEnabled === 'function') {
+    try { b.setPullToRefreshEnabled(!!enabled); } catch (ignored) {}
+  }
+}
+
 /* ──────── VIEWPORT ──────── */
 safely('viewport', function () {
   var head = document.head || document.documentElement;
@@ -158,11 +169,23 @@ slpOnce('observer', function () {
 });
 
 /* ──────── APP NAVIGATION HASHES ────────
-   #slp-browse      Browse tab: scroll to the catalogue
-   #registetModal   Sign up: scroll to the register form on /login */
+   #slp-browse         Browse tab: scroll to the catalogue
+   #slp-search=<text>  toolbar search, arriving from another page
+   #registetModal      Sign up: scroll to the register form on /login */
+var SEARCH_HASH = '#slp-search=';
+
 function handleHash() {
   var hash = location.hash || '';
   var target = null;
+  if (hash.indexOf(SEARCH_HASH) === 0) {
+    var query = '';
+    try { query = decodeURIComponent(hash.substring(SEARCH_HASH.length)); } catch (ignored) {}
+    // Drop the fragment first: this file runs again on every fragment
+    // change, and going Back must not repeat the search.
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (ignored) {}
+    if (query && typeof window.__slpSearch === 'function') window.__slpSearch(query);
+    return;
+  }
   if (hash === '#slp-browse') {
     target = $1('.category-tab, .nav-tabs, #resultPanel');
   } else if (hash.indexOf('registetModal') !== -1) {
@@ -172,8 +195,10 @@ function handleHash() {
     setTimeout(function () { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 250);
   }
 }
-handleHash();
 slpOnce('hashchange', function () { window.addEventListener('hashchange', handleHash); });
+/* The first handleHash() call is at the bottom of the file, after the page
+   enhancers have run - the search hash needs enhanceHome() to have set
+   window.__slpSearch. */
 
 /* ════════════════════════════════════════════════════
    HOME
@@ -289,6 +314,14 @@ function enhanceSearch() {
   // Searching scrolls to the results; get the keyboard out of the way.
   button.addEventListener('click', function () { keyword.blur(); });
   keyword.addEventListener('keydown', function (e) { if (e.keyCode === 13) keyword.blur(); });
+
+  /* Entry point for the app's toolbar search: fill the site's own field
+     and press its own button, so the request and the results are exactly
+     what a search typed into the page would produce. */
+  window.__slpSearch = function (query) {
+    keyword.value = String(query == null ? '' : query).slice(0, 100);
+    button.click();
+  };
 }
 
 /* The add-to-cart sheet opens with whatever is already in the cart for
@@ -297,6 +330,8 @@ function enhanceSearch() {
    to one mint copy, as the product page does. */
 slpOnce('sheetDefaults', function () {
   if (!jq || !jq.fn || typeof jq(document).ajaxSuccess !== 'function') return;
+  jq(document).on('opening', '.remodal', function () { setPullToRefresh(false); });
+  jq(document).on('closed', '.remodal', function () { setPullToRefresh(true); });
   jq(document).ajaxSuccess(function (event, xhr, settings) {
     if (!settings || !/\/popupGet/i.test(settings.url || '')) return;
     var mint = document.getElementById('model_mint_qty');
@@ -314,22 +349,38 @@ slpOnce('sheetDefaults', function () {
    ════════════════════════════════════════════════════ */
 
 function enhanceProductDetail() {
-  /* Tap the hero image for a full-screen, pinch-zoomable view. */
+  /* Tap the hero image for a full-screen, pinch-zoomable view.
+     Opening it pushes a history entry, so the Back button closes the
+     viewer instead of leaving the product page. */
   var hero = $1('.product-view > img');
   if (hero && !hero.dataset.slpZoom) {
     hero.dataset.slpZoom = '1';
+    var overlay = null;
+    var removeOverlay = function () {
+      if (!overlay) return;
+      overlay.remove();
+      overlay = null;
+      setPullToRefresh(true);
+    };
+    window.addEventListener('popstate', removeOverlay);
     hero.addEventListener('click', function () {
-      var overlay = el('div', 'slp-overlay');
+      if (overlay) return;
+      overlay = el('div', 'slp-overlay');
       var big = el('img');
       big.src = hero.getAttribute('data-zoom-image') || hero.src;
       big.alt = hero.alt || '';
-      var close = el('button', null, '×');
+      var close = el('button', null, '\u00d7');
       close.type = 'button';
       close.setAttribute('aria-label', 'Close');
       overlay.appendChild(big);
       overlay.appendChild(close);
-      overlay.addEventListener('click', function () { overlay.remove(); });
+      var pushed = false;
+      try { history.pushState({ slpZoom: true }, ''); pushed = true; } catch (ignored) {}
+      overlay.addEventListener('click', function () {
+        if (pushed) history.back(); else removeOverlay();
+      });
       document.body.appendChild(overlay);
+      setPullToRefresh(false);
     });
   }
 
@@ -604,4 +655,5 @@ switch (pageType) {
   case 'REGISTER':       safely('auth', enhanceAuth); break;
   case 'STATIC':         safely('static', enhanceStatic); break;
 }
+safely('hash', handleHash);
 })();

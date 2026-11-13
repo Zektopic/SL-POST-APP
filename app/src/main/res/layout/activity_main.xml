@@ -1,89 +1,68 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.drawerlayout.widget.DrawerLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/drawerLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    app:statusBarBackground="@color/md_surface_container_lowest"
+    app:statusBarBackground="@color/slp_chrome"
     tools:context=".MainActivity">
 
-    <!-- ═══════════════ MAIN CONTENT ═══════════════ -->
     <!--
-        LinearLayout stacks AppBar + web content + BottomNavView vertically.
-        CoordinatorLayout keeps the AppBar scroll behaviour; the BottomNavView
-        is a proper sibling — not an overlay — so content never hides behind it.
+        App bar + web content + bottom bar, stacked. The bottom bar is a real
+        sibling of the content, not an overlay, so the page never hides
+        behind it.
     -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:fitsSystemWindows="true">
+        android:fitsSystemWindows="true"
+        android:orientation="vertical">
 
-        <!-- ── CoordinatorLayout: AppBar + web content + loading overlay ── -->
         <androidx.coordinatorlayout.widget.CoordinatorLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
             android:fitsSystemWindows="true">
 
-            <!-- ── AppBar — light surface with crimson branding ── -->
             <com.google.android.material.appbar.AppBarLayout
                 android:id="@+id/appBarLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:background="@color/slp_chrome"
                 android:fitsSystemWindows="true"
-                android:background="@color/md_surface_container_lowest"
-                app:elevation="1dp"
+                app:elevation="0dp"
                 app:liftOnScroll="false">
 
                 <com.google.android.material.appbar.MaterialToolbar
                     android:id="@+id/toolbar"
                     android:layout_width="match_parent"
                     android:layout_height="?attr/actionBarSize"
-                    android:background="@color/md_surface_container_lowest"
-                    app:title="Sri Lanka Philately"
-                    app:subtitle="Official Philatelic Bureau"
-                    app:titleTextAppearance="@style/SLP.Toolbar.Title"
-                    app:subtitleTextAppearance="@style/SLP.Toolbar.Subtitle"
+                    android:background="@color/slp_chrome"
                     app:navigationIconTint="@color/md_primary"
-                    app:popupTheme="@style/ThemeOverlay.Material3.Light" />
+                    app:subtitle="@string/subtitle_default"
+                    app:subtitleTextAppearance="@style/SLP.Toolbar.Subtitle"
+                    app:title="@string/app_name"
+                    app:titleTextAppearance="@style/SLP.Toolbar.Title" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/md_outline_variant" />
 
             </com.google.android.material.appbar.AppBarLayout>
 
-            <!-- ── Web content + progress bar + error screen ── -->
-            <androidx.constraintlayout.widget.ConstraintLayout
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
+                android:background="@color/md_background"
                 app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-                <!-- Brand-tinted 3dp progress strip at the top edge -->
-                <ProgressBar
-                    android:id="@+id/progressBar"
-                    style="?android:attr/progressBarStyleHorizontal"
-                    android:layout_width="0dp"
-                    android:layout_height="3dp"
-                    android:max="100"
-                    android:progress="0"
-                    android:visibility="gone"
-                    android:progressTint="@color/md_primary"
-                    android:progressBackgroundTint="@color/md_primary_container"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    tools:visibility="visible" />
-
-                <!-- SwipeRefreshLayout wrapping the WebView -->
                 <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
                     android:id="@+id/swipeRefreshLayout"
-                    android:layout_width="0dp"
-                    android:layout_height="0dp"
-                    app:layout_constraintTop_toBottomOf="@id/progressBar"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent">
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
 
                     <WebView
                         android:id="@+id/webView"
@@ -92,157 +71,155 @@
 
                 </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-                <!-- ── No-connection error screen ── -->
-                <LinearLayout
+                <!-- Shown in place of the page when a load fails. -->
+                <androidx.core.widget.NestedScrollView
                     android:id="@+id/errorView"
-                    android:layout_width="0dp"
-                    android:layout_height="0dp"
-                    android:orientation="vertical"
-                    android:gravity="center"
-                    android:paddingHorizontal="48dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
                     android:background="@color/md_background"
-                    android:visibility="gone"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toBottomOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    tools:visibility="gone">
+                    android:fillViewport="true"
+                    android:visibility="gone">
 
-                    <FrameLayout
-                        android:layout_width="120dp"
-                        android:layout_height="120dp"
-                        android:background="@drawable/bg_error_icon_container">
-
-                        <ImageView
-                            android:layout_width="56dp"
-                            android:layout_height="56dp"
-                            android:layout_gravity="center"
-                            android:src="@drawable/ic_no_connection"
-                            android:contentDescription="No internet connection" />
-
-                    </FrameLayout>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="28dp"
-                        android:text="No Internet Connection"
-                        android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
-                        android:textColor="@color/md_on_surface"
-                        android:gravity="center"
-                        android:fontFamily="sans-serif"
-                        android:textStyle="bold"
-                        android:letterSpacing="-0.02" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:text="It seems you've drifted off the grid.\nOur archives are temporarily unreachable."
-                        android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-                        android:textColor="@color/md_on_surface_variant"
-                        android:gravity="center"
-                        android:lineSpacingMultiplier="1.4" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/retryButton"
-                        style="@style/Widget.Material3.Button"
+                    <LinearLayout
                         android:layout_width="match_parent"
-                        android:layout_height="56dp"
-                        android:layout_marginTop="40dp"
-                        android:layout_marginHorizontal="24dp"
-                        android:text="Retry Connection"
-                        android:textAllCaps="false"
-                        android:fontFamily="sans-serif"
-                        android:textStyle="bold"
-                        android:letterSpacing="0.01"
-                        app:icon="@drawable/ic_refresh"
-                        app:iconGravity="textStart"
-                        app:iconPadding="8dp"
-                        app:cornerRadius="12dp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="24dp"
-                        android:text="ERR_DISCONNECTED"
-                        android:textSize="10sp"
-                        android:textColor="@color/md_outline"
-                        android:fontFamily="sans-serif"
-                        android:letterSpacing="0.08"
-                        android:textAllCaps="true" />
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="32dp">
 
-                </LinearLayout>
+                        <FrameLayout
+                            android:layout_width="96dp"
+                            android:layout_height="96dp"
+                            android:background="@drawable/bg_error_icon_container">
 
-            </androidx.constraintlayout.widget.ConstraintLayout>
+                            <ImageView
+                                android:id="@+id/errorIcon"
+                                android:layout_width="44dp"
+                                android:layout_height="44dp"
+                                android:layout_gravity="center"
+                                android:importantForAccessibility="no"
+                                android:src="@drawable/ic_no_connection"
+                                app:tint="@color/md_on_primary_container" />
 
-            <!--
-                ── Branded splash / loading overlay ──
-                Covers the web content area only (toolbar + bottom nav remain visible
-                immediately — consistent with native app behaviour). Fades out in onPageFinished.
-            -->
-            <FrameLayout
-                android:id="@+id/loadingOverlay"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:visibility="visible">
+                        </FrameLayout>
 
-                <ImageView
+                        <TextView
+                            android:id="@+id/errorTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="24dp"
+                            android:gravity="center"
+                            android:text="@string/error_offline_title"
+                            android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
+                            android:textColor="@color/md_on_surface" />
+
+                        <TextView
+                            android:id="@+id/errorMessage"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:gravity="center"
+                            android:lineSpacingMultiplier="1.3"
+                            android:maxWidth="320dp"
+                            android:text="@string/error_offline_message"
+                            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+                            android:textColor="@color/md_on_surface_variant" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/retryButton"
+                            style="@style/Widget.Material3.Button"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="28dp"
+                            android:minWidth="200dp"
+                            android:minHeight="52dp"
+                            android:text="@string/action_retry"
+                            android:textColor="@color/slp_on_filled"
+                            app:backgroundTint="@color/slp_filled"
+                            app:iconTint="@color/slp_on_filled"
+                            app:icon="@drawable/ic_refresh"
+                            app:iconGravity="textStart"
+                            app:iconPadding="8dp"
+                            app:iconSize="18dp" />
+
+                        <!-- The underlying error, for anyone reporting a problem. -->
+                        <TextView
+                            android:id="@+id/errorDetail"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="20dp"
+                            android:gravity="center"
+                            android:textAppearance="@style/TextAppearance.Material3.LabelSmall"
+                            android:textColor="@color/md_outline"
+                            tools:text="net::ERR_INTERNET_DISCONNECTED" />
+
+                    </LinearLayout>
+
+                </androidx.core.widget.NestedScrollView>
+
+                <!-- Page-load progress, over whichever of the two is showing. -->
+                <com.google.android.material.progressindicator.LinearProgressIndicator
+                    android:id="@+id/progressBar"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:scaleType="centerCrop"
-                    android:src="@drawable/splash_image"
-                    android:contentDescription="Splash Background" />
-
-                <!-- Dark overlay to ensure text and spinner are visible -->
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:background="#66000000" />
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:orientation="vertical"
-                    android:gravity="center">
+                    android:layout_gravity="top"
+                    android:max="100"
+                    android:visibility="gone"
+                    app:indicatorColor="@color/md_primary"
+                    app:trackColor="@color/md_primary_container"
+                    app:trackThickness="3dp"
+                    tools:progress="40"
+                    tools:visibility="visible" />
+
+                <!--
+                    Loading screen for the first page. It covers the content area
+                    only: the toolbar and the bottom bar are usable straight away.
+                    Crimson in both themes, to match the system splash screen.
+                -->
+                <LinearLayout
+                    android:id="@+id/loadingOverlay"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/bg_brand"
+                    android:clickable="true"
+                    android:contentDescription="@string/loading_content_description"
+                    android:focusable="true"
+                    android:gravity="center"
+                    android:orientation="vertical">
 
                     <ImageView
-                        android:layout_width="80dp"
-                        android:layout_height="80dp"
-                        android:src="@mipmap/ic_launcher_round"
-                        android:contentDescription="Sri Lanka Philately" />
+                        android:layout_width="96dp"
+                        android:layout_height="96dp"
+                        android:importantForAccessibility="no"
+                        android:src="@drawable/ic_launcher_foreground" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="20dp"
-                        android:text="Sri Lanka Philately"
-                        android:textColor="#FFFFFF"
+                        android:layout_marginTop="4dp"
+                        android:letterSpacing="-0.02"
+                        android:text="@string/app_name"
+                        android:textColor="@color/slp_on_brand"
                         android:textSize="24sp"
-                        android:fontFamily="sans-serif"
-                        android:textStyle="bold"
-                        android:letterSpacing="-0.02" />
+                        android:textStyle="bold" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="6dp"
-                        android:text="OFFICIAL PHILATELIC BUREAU"
-                        android:textColor="#B3FFFFFF"
-                        android:textSize="10sp"
-                        android:letterSpacing="0.16"
-                        android:fontFamily="sans-serif" />
+                        android:letterSpacing="0.08"
+                        android:text="@string/app_tagline"
+                        android:textColor="@color/slp_on_brand_muted"
+                        android:textSize="12sp" />
 
-                    <com.google.android.material.progressindicator.CircularProgressIndicator
-                        android:id="@+id/loadingIndicator"
-                        android:layout_width="wrap_content"
+                    <com.google.android.material.progressindicator.LinearProgressIndicator
+                        android:layout_width="120dp"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="40dp"
+                        android:layout_marginTop="36dp"
                         android:indeterminate="true"
-                        app:indicatorColor="#FFFFFF"
-                        app:trackColor="#33FFFFFF"
-                        app:indicatorSize="36dp"
+                        app:indicatorColor="@color/slp_on_brand"
+                        app:trackColor="@color/slp_on_brand_track"
+                        app:trackCornerRadius="2dp"
                         app:trackThickness="3dp" />
 
                 </LinearLayout>
@@ -251,40 +228,36 @@
 
         </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
-        <!--
-            ── Bottom Navigation Bar ──
-            Primary navigation for the app. Material 3 style uses colorPrimary (crimson)
-            for the active-indicator pill and colorOnSurfaceVariant for inactive icons.
-            Sits as a true sibling of the web content — never overlaps it.
-        -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/md_outline_variant" />
+
         <com.google.android.material.bottomnavigation.BottomNavigationView
             android:id="@+id/bottomNavView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/md_surface_container_lowest"
-            app:menu="@menu/bottom_nav"
-            app:elevation="8dp"
+            android:background="@color/slp_chrome"
+            app:elevation="0dp"
+            app:itemActiveIndicatorStyle="@style/SLP.BottomNav.ActiveIndicator"
             app:itemIconTint="@color/bottom_nav_item"
             app:itemTextColor="@color/bottom_nav_item"
-            app:labelVisibilityMode="labeled" />
+            app:labelVisibilityMode="labeled"
+            app:menu="@menu/bottom_nav" />
 
     </LinearLayout>
 
-    <!-- ═══════════════ NAVIGATION DRAWER ═══════════════ -->
-    <!--
-        Drawer is now a secondary auth panel — accessible via the hamburger.
-        Primary navigation lives in the bottom bar above.
-    -->
+    <!-- Drawer: account actions and the site's information pages. -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/navigationView"
-        android:layout_width="280dp"
+        android:layout_width="300dp"
         android:layout_height="match_parent"
         android:layout_gravity="start"
+        android:background="@color/slp_chrome"
         android:fitsSystemWindows="true"
-        android:background="@color/md_surface_container_lowest"
         app:headerLayout="@layout/nav_header"
-        app:menu="@menu/bottom_nav_menu"
         app:itemIconTint="@color/md_on_surface_variant"
-        app:itemTextColor="@color/md_on_surface" />
+        app:itemTextColor="@color/md_on_surface"
+        app:menu="@menu/drawer_menu" />
 
 </androidx.drawerlayout.widget.DrawerLayout>

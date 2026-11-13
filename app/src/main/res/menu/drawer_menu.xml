@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Drawer menu — auth actions only.
-    Primary navigation (Home / Browse / Cart) lives in the bottom nav bar.
-    Visibility is toggled dynamically by detectAndUpdateAuthState() in MainActivity.
+    Drawer: account actions and the site's information pages.
+    Primary navigation (Home / Browse / Cart / Account) is the bottom bar.
+    MainActivity.updateAuthMenuState() shows one of the two account groups.
 -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
@@ -10,19 +10,17 @@
         <item
             android:id="@+id/navigation_login"
             android:icon="@drawable/ic_login"
-            android:title="@string/nav_login"
-            android:visible="true" />
+            android:title="@string/nav_login" />
         <item
             android:id="@+id/navigation_signup"
             android:icon="@drawable/ic_signup"
-            android:title="@string/nav_signup"
-            android:visible="true" />
+            android:title="@string/nav_signup" />
     </group>
 
     <group android:id="@+id/group_auth_user">
         <item
             android:id="@+id/navigation_account"
-            android:icon="@drawable/ic_signup"
+            android:icon="@drawable/ic_account"
             android:title="@string/nav_my_account"
             android:visible="false" />
         <item

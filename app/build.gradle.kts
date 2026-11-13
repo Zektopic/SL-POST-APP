@@ -59,6 +59,8 @@ android {
             // android.util.Log is a stub in JVM unit tests; without this it
             // throws "not mocked" instead of returning a default.
             isReturnDefaultValues = true
+            // Robolectric inflates the real layouts, menus and themes.
+            isIncludeAndroidResources = true
         }
     }
 }
@@ -69,6 +71,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     implementation(libs.androidx.swiperefreshlayout)
