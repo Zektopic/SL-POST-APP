@@ -1,1258 +1,2015 @@
-/* ================================================
-   SL POST STAMPS — MOBILE INJECTION STYLESHEET v3
-   Crimson/Gold Sri Lankan Philately design system.
-   M3 layer over the Bootstrap 3 site.
-   ================================================ */
+/* ================================================================
+   SL POST STAMPS - injected stylesheet (v4)
 
-/* ──────── DESIGN TOKENS ──────── */
+   Restyles stamps.slpost.gov.lk (CakePHP + Bootstrap 3) for a phone.
+   The app supplies the toolbar, bottom navigation and drawer; this
+   sheet hides the site's own chrome and reflows its desktop layout.
+
+   Every selector below was written against the site's real markup.
+   It is a third-party site: when its markup changes, rules here stop
+   matching silently. The comment above each block records the markup
+   it assumes, so a mismatch can be diagnosed by reading the page.
+
+   Colours come only from the tokens in the first block. Nothing
+   further down may use a literal colour - that is what lets a theme
+   swap the palette in one place.
+
+   `!important` is used throughout on purpose: the site ships inline
+   styles and high-specificity rules, and this sheet has to win.
+   ================================================================ */
+
+/* ──────── TOKENS ──────── */
 :root {
-  --slp-primary:    #7C001A;
-  --slp-primary-c:  #A01A2C;
-  --slp-primary-lt: #FFB3B2;
+  --slp-primary: #7C001A;
+  --slp-primary-2: #A01A2C;
   --slp-on-primary: #FFFFFF;
-  --slp-secondary:  #835400;
-  --slp-sec-container: #FEB959;
-  --slp-tertiary:   #003D66;
-  --slp-surface:    #FDF8F9;
-  --slp-surface-dim:#DDD9DA;
-  --slp-surface-c:  #F1EDEE;
-  --slp-surface-c-h:#EBE7E8;
-  --slp-surface-c-l:#F7F2F3;
-  --slp-surface-low:#FFFFFF;
+  --slp-primary-container: #FFDAD9;
+  --slp-on-primary-container: #410009;
+
+  --slp-secondary: #835400;
+  --slp-secondary-container: #FFDDB5;
+  --slp-on-secondary-container: #2A1800;
+
+  --slp-bg: #FDF8F9;
+  --slp-surface: #FFFFFF;
+  --slp-surface-1: #F7F2F3;
+  --slp-surface-2: #F1EDEE;
+  --slp-surface-3: #EBE7E8;
   --slp-on-surface: #1C1B1C;
-  --slp-on-surface-v:#594140;
-  --slp-outline:    #8D7070;
-  --slp-outline-var:#E1BEBE;
-  --slp-error:      #BA1A1A;
-  --slp-success:    #2E7D32;
-  --slp-radius-sm:  8px;
-  --slp-radius-md:  12px;
-  --slp-radius-lg:  24px;
-  --slp-radius-xl:  28px;
-  --slp-shadow-1:   0 1px 3px rgba(28,27,28,.06), 0 1px 2px rgba(28,27,28,.04);
-  --slp-shadow-2:   0 4px 20px rgba(28,27,28,.06);
-  --slp-shadow-3:   0 8px 24px rgba(28,27,28,.10);
-  --slp-ease:       cubic-bezier(.4, 0, .2, 1);
-  --slp-dur:        .25s;
+  --slp-on-surface-2: #594140;
+  --slp-outline: #8D7070;
+  --slp-outline-2: #EADADA;
+
+  --slp-error: #BA1A1A;
+  --slp-error-container: #FFDAD6;
+  --slp-on-error-container: #410002;
+  --slp-success: #2E7D32;
+  --slp-success-container: #E3F2E4;
+  --slp-info: #003D66;
+  --slp-info-container: #DCEBFA;
+
+  --slp-scrim: rgba(28, 27, 28, .56);
+  /* The full-screen image viewer is dark in every theme. */
+  --slp-viewer: rgba(0, 0, 0, .92);
+  --slp-on-viewer: #FFFFFF;
+  --slp-viewer-control: rgba(255, 255, 255, .16);
+  --slp-shadow-1: 0 1px 2px rgba(28, 27, 28, .06), 0 1px 3px rgba(28, 27, 28, .05);
+  --slp-shadow-2: 0 6px 20px rgba(28, 27, 28, .10);
+  --slp-shadow-bar: 0 -2px 12px rgba(28, 27, 28, .10);
+
+  --slp-r-sm: 8px;
+  --slp-r-md: 12px;
+  --slp-r-lg: 16px;
+  --slp-r-xl: 24px;
+  --slp-r-pill: 999px;
+  --slp-ease: cubic-bezier(.2, 0, 0, 1);
+  --slp-dur: .18s;
+  --slp-gutter: 16px;
 }
 
-/* ──────── BASE RESET ──────── */
+/* ──────── BASE ──────── */
 *, *::before, *::after {
   box-sizing: border-box !important;
   -webkit-tap-highlight-color: transparent !important;
 }
 
 html {
-  scroll-behavior: smooth !important;
   -webkit-text-size-adjust: 100% !important;
+  background: var(--slp-bg) !important;
 }
 
 body {
-  font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI',
-               Roboto, 'Helvetica Neue', sans-serif !important;
+  font-family: Roboto, system-ui, -apple-system, 'Segoe UI', sans-serif !important;
+  font-size: 15px !important;
+  line-height: 1.5 !important;
   -webkit-font-smoothing: antialiased !important;
-  background: var(--slp-surface) !important;
+  background: var(--slp-bg) !important;
   color: var(--slp-on-surface) !important;
-  overscroll-behavior: contain !important;
-  line-height: 1.6 !important;
-  animation: slpFadeIn .35s var(--slp-ease) both !important;
+  overscroll-behavior-y: contain !important;
+  overflow-x: hidden !important;
+  padding: 0 0 28px !important;
+  margin: 0 !important;
 }
 
-@keyframes slpFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+a {
+  color: var(--slp-primary) !important;
+  text-decoration: none !important;
 }
 
-/* ──────── HIDE WEBSITE CHROME ──────── */
-/* The entire site header (logo strip .header_top, .backbround-top, menus)
-   lives inside nav.navbar-inverse, so hiding .navbar removes all of it.
-   The app's own toolbar + bottom nav replace it on every page, including
-   /login (its form is a .profile card in the body, not in the navbar). */
-#header,
-header,
-.header,
-.site-header,
-.main-header,
+img { max-width: 100% !important; }
+
+hr {
+  border: 0 !important;
+  border-top: 1px solid var(--slp-outline-2) !important;
+  margin: 16px 0 !important;
+}
+
+h1, h2, h3, h4, h5, legend {
+  color: var(--slp-on-surface) !important;
+  font-family: inherit !important;
+  font-weight: 700 !important;
+  letter-spacing: -.01em !important;
+  line-height: 1.25 !important;
+  text-transform: none !important;
+}
+h1 { font-size: 22px !important; margin: 16px 0 12px !important; }
+h2 { font-size: 19px !important; margin: 16px 0 10px !important; }
+h3 { font-size: 17px !important; margin: 14px 0 8px !important; }
+h4 { font-size: 15px !important; margin: 12px 0 6px !important; }
+
+::selection {
+  background: var(--slp-primary-container) !important;
+  color: var(--slp-on-primary-container) !important;
+}
+
+/* ──────── HIDE THE SITE'S OWN CHROME ────────
+   The whole header (logo strip, menus and the sign-in form) lives in
+   nav.navbar; inject.js lifts the sign-in form out of it on /login.
+   Breadcrumbs, the scroll-to-top button and the footer duplicate what
+   the app's toolbar, back gesture and drawer already do. */
 nav.navbar,
-.navbar,
-.navbar-fixed-top,
-.navbar-default,
-#main-nav,
-.top-bar,
-.header-top,
-.header-bottom {
-  display: none !important;
-}
-
-footer, #footer, .footer, .site-footer, .main-footer,
-.footer-widgets, .footer-bottom,
-.back-to-top, .scroll-to-top, #back-to-top,
+footer,
+#footer,
+ul.breadcrumb,
 #scrollUp,
-.breadcrumb-wrapper, .breadcrumb,
-.page-header.breadcrumb-section {
+.scrollVisible {
   display: none !important;
-}
-
-/* Carousel dots/arrows float over content once the slider is resized */
-.carousel-indicators,
-.control-carousel {
-  display: none !important;
-}
-
-body {
-  padding-top: 0 !important;
-}
-
-body > .page-wrapper,
-body > .wrapper,
-.main-content,
-#main-content,
-.site-content,
-body > .container,
-body > .container-fluid {
-  padding-top: 0 !important;
-  margin-top: 0 !important;
 }
 
 /* ──────── LAYOUT ──────── */
 .container,
 .container-fluid {
-  padding-left: 14px !important;
-  padding-right: 14px !important;
+  width: auto !important;
   max-width: 100% !important;
+  padding-left: var(--slp-gutter) !important;
+  padding-right: var(--slp-gutter) !important;
+  margin-top: 0 !important;
+}
+/* Pages nest .container inside .container; only the outer one pads. */
+.container .container,
+.row.message.container {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+.content-back {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
 }
 
 .row {
   margin-left: -8px !important;
   margin-right: -8px !important;
 }
-
-.row > [class*="col-"] {
+.row > [class*="col-"],
+.row > .column,
+.row > .columns {
   padding-left: 8px !important;
   padding-right: 8px !important;
 }
+.no-side-margin { margin-left: 0 !important; margin-right: 0 !important; }
+.no-side-padding { padding-left: 0 !important; padding-right: 0 !important; }
 
-/* ──────── CART BAR (blue → crimson) ──────── */
-.btn-info,
-a.btn-info,
-.btn-info:hover,
-.btn-info:focus,
-.btn-info:active {
-  background: linear-gradient(135deg, var(--slp-primary) 0%, var(--slp-primary-c) 100%) !important;
-  border: none !important;
-  border-radius: var(--slp-radius-lg) !important;
-  color: var(--slp-on-primary) !important;
-  font-weight: 600 !important;
-  letter-spacing: .3px !important;
-  box-shadow: var(--slp-shadow-1) !important;
-  transition: all var(--slp-dur) var(--slp-ease) !important;
-  padding: 10px 20px !important;
-}
-
-/* ──────── SEARCH PANEL ──────── */
-.panel {
-  border: 1px solid var(--slp-outline-var) !important;
-  border-radius: var(--slp-radius-md) !important;
-  box-shadow: var(--slp-shadow-1) !important;
-  background: var(--slp-surface-low) !important;
-  overflow: hidden !important;
-  margin-bottom: 16px !important;
-  transition: box-shadow var(--slp-dur) var(--slp-ease) !important;
-}
-
-.panel-heading,
-.panel-default > .panel-heading {
-  background: var(--slp-surface-c-h) !important;
-  color: var(--slp-primary) !important;
-  border-bottom: 1px solid var(--slp-outline-var) !important;
-  font-weight: 700 !important;
-  font-size: 12px !important;
-  padding: 14px 16px !important;
-  letter-spacing: .8px !important;
-  text-transform: uppercase !important;
-  border-radius: var(--slp-radius-md) var(--slp-radius-md) 0 0 !important;
-}
-
-.panel-body {
-  padding: 16px !important;
-}
-
-/* ──────── CATEGORY TABS ──────── */
-.nav-tabs {
-  border-bottom: none !important;
-  display: flex !important;
-  flex-wrap: nowrap !important;
-  overflow-x: auto !important;
-  scrollbar-width: none !important;
-  gap: 6px !important;
-  padding: 6px 0 !important;
-  background: transparent !important;
-}
-
-.nav-tabs::-webkit-scrollbar { display: none !important; }
-
-.nav-tabs > li {
-  float: none !important;
-  flex-shrink: 0 !important;
-}
-
-.nav-tabs > li > a {
-  border: none !important;
-  border-radius: 9999px !important;
-  padding: 10px 22px !important;
-  font-size: 13px !important;
-  font-weight: 500 !important;
-  white-space: nowrap !important;
-  color: var(--slp-on-surface) !important;
-  background: var(--slp-surface-c-h) !important;
-  transition: all var(--slp-dur) var(--slp-ease) !important;
-  margin: 0 !important;
-  text-decoration: none !important;
-}
-
-.nav-tabs > li > a:hover,
-.nav-tabs > li > a:focus {
-  background: var(--slp-outline-var) !important;
-  color: var(--slp-primary) !important;
-  border: none !important;
-}
-
-.nav-tabs > li.active > a,
-.nav-tabs > li.active > a:hover,
-.nav-tabs > li.active > a:focus {
-  background: var(--slp-primary) !important;
-  color: var(--slp-on-primary) !important;
-  border: none !important;
-  border-radius: 9999px !important;
-  font-weight: 600 !important;
-}
-
-/* ──────── PRODUCT CARDS ──────── */
-/* Real markup: div.col-sm-4.col-lg-3.col-md-4.col-xs-12
-     > .thumbnail.cart-thumb.product-image-wrapper
-       > .single-product
-         > .productinfo (.img-wrapper > img.product-thumb-image,
-                         label.item-type, .caption > p > a, .value > h2,
-                         .long-desc = desktop hover overlay)
-         > .choose > .button-addto-cart > button.add-to-cart            */
-.thumbnail.cart-thumb,
-.product-image-wrapper,
-.product-item,
-.product-card,
-.stamp-item,
-ul.products li.product,
-.product-grid-item {
-  border-radius: var(--slp-radius-md) !important;
-  overflow: hidden !important;
-  box-shadow: var(--slp-shadow-1) !important;
-  border: none !important;
-  padding: 0 !important;
-  background: var(--slp-surface-low) !important;
-  transition: transform var(--slp-dur) var(--slp-ease),
-              box-shadow var(--slp-dur) var(--slp-ease) !important;
-  margin-bottom: 16px !important;
-}
-
-.thumbnail.cart-thumb:active,
-.product-item:active,
-.product-card:active {
-  transform: scale(0.975) !important;
-}
-
-.single-product {
-  position: relative !important;
-  background: transparent !important;
-  border: none !important;
-}
-
-/* Desktop-only hover overlay with stamp specs — useless on touch, hide it */
-.single-product .long-desc {
-  display: none !important;
-}
-
-/* "New" corner ribbon */
-img.new-img-corner {
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 48px !important;
-  height: auto !important;
-  z-index: 2 !important;
-  padding: 0 !important;
-  background: transparent !important;
-}
-
-/* Product images */
-.productinfo .img-wrapper img,
-img.product-thumb-image,
-.product-item img,
-.product-card img,
-.stamp-item img {
-  width: 100% !important;
-  height: auto !important;
-  max-height: 200px !important;
-  object-fit: contain !important;
-  display: block !important;
-  padding: 16px !important;
-  background: var(--slp-surface-c-l) !important;
-  transition: transform .3s var(--slp-ease) !important;
-}
-
-/* Card title link */
-.productinfo .caption p {
-  margin: 0 !important;
-}
-.productinfo .caption a {
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  color: var(--slp-on-surface) !important;
-  line-height: 1.35 !important;
-  display: block !important;
-  padding: 2px 12px !important;
-  min-height: 38px !important;
-}
-
-/* Card price (site renders it as .value > h2) */
-.productinfo .value h2 {
-  font-size: 16px !important;
-  font-weight: 800 !important;
-  color: var(--slp-primary) !important;
-  margin: 4px 0 6px !important;
-  letter-spacing: 0 !important;
-}
-
-/* Category label (e.g., "STAMPS (PHILATELIC)") */
-.item-type,
-label.item-type {
-  display: inline-block !important;
-  background: transparent !important;
-  color: var(--slp-secondary) !important;
-  font-size: 10px !important;
-  font-weight: 700 !important;
-  letter-spacing: 1px !important;
-  text-transform: uppercase !important;
-  padding: 6px 12px 2px !important;
-  margin: 0 !important;
-}
-
-/* Product title */
-.product-item .product-title,
-.product-card .title,
-.product-name,
-ul.products li.product .woocommerce-loop-product__title,
-.col-sm-3 a {
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  color: var(--slp-on-surface) !important;
-  text-decoration: none !important;
-  line-height: 1.35 !important;
-  display: block !important;
-  padding: 2px 12px !important;
-}
-
-/* ──────── PRICES ──────── */
-.productinfo b,
-.productinfo strong,
-.item-price,
-.tab-pane b,
-.tab-pane strong {
-  color: var(--slp-primary) !important;
-  font-weight: 700 !important;
-  font-size: 15px !important;
-}
-
-del .woocommerce-Price-amount,
-.original-price,
-.old-price {
-  color: var(--slp-outline) !important;
-  font-size: 13px !important;
-  font-weight: 400 !important;
-  text-decoration: line-through !important;
-}
-
-/* ──────── BUTTONS — Add to Cart ──────── */
-.btn-success,
-.btn-success:hover,
-.btn-success:focus,
-.btn-success:active,
-.btn-success.active,
-.add-to-cart,
-.add_to_cart_button,
-.single_add_to_cart_button {
-  background: transparent !important;
-  color: var(--slp-primary) !important;
-  border: 1px solid var(--slp-outline-var) !important;
-  border-radius: var(--slp-radius-sm) !important;
-  padding: 10px 16px !important;
-  font-size: 12px !important;
-  font-weight: 700 !important;
-  letter-spacing: .3px !important;
-  box-shadow: none !important;
-  transition: all var(--slp-dur) var(--slp-ease) !important;
-  text-transform: none !important;
-  cursor: pointer !important;
-  display: block !important;
-  text-align: center !important;
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  margin: 6px 12px 14px !important;
-  width: calc(100% - 24px) !important;
-}
-
-.btn-success:active,
-.add_to_cart_button:active {
-  transform: scale(0.96) !important;
-  background: var(--slp-primary) !important;
-  color: var(--slp-on-primary) !important;
-  border-color: var(--slp-primary) !important;
-}
-
-/* ──────── BUTTONS — Primary ──────── */
-.btn-primary,
-.button,
+/* ──────── BUTTONS ────────
+   Three tiers, mapped onto the classes the site already uses:
+     filled    - the one action a screen is for (anything that submits)
+     tonal     - "Add To Cart" on a product card
+     outlined  - everything else                                        */
+.btn,
+button[type="submit"],
 input[type="submit"],
-.checkout-button,
-.wc-proceed-to-checkout a,
-#login-btn,
-input.button.raised.blue {
-  background: linear-gradient(135deg, var(--slp-primary) 0%, var(--slp-primary-c) 100%) !important;
-  color: var(--slp-on-primary) !important;
-  border: none !important;
-  border-radius: var(--slp-radius-md) !important;
-  padding: 14px 28px !important;
-  font-size: 15px !important;
-  font-weight: 700 !important;
-  letter-spacing: .3px !important;
-  box-shadow: 0 4px 14px rgba(124,0,26,.2) !important;
-  transition: all var(--slp-dur) var(--slp-ease) !important;
+.remodal-confirm,
+.remodal-cancel,
+.remodal-moreinfor,
+.remove-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  min-height: 44px !important;
+  height: auto !important;
+  padding: 10px 20px !important;
+  margin: 0 !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--slp-r-md) !important;
+  font-family: inherit !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  letter-spacing: .1px !important;
   text-transform: none !important;
+  text-shadow: none !important;
+  white-space: normal !important;
+  box-shadow: none !important;
+  background-image: none !important;
   cursor: pointer !important;
-  display: inline-block !important;
-  text-align: center !important;
   -webkit-appearance: none !important;
   appearance: none !important;
+  transition: background-color var(--slp-dur) var(--slp-ease),
+              transform var(--slp-dur) var(--slp-ease) !important;
+}
+.btn-block { display: flex !important; width: 100% !important; }
+.btn:active,
+button[type="submit"]:active,
+input[type="submit"]:active { transform: scale(.98) !important; }
+.btn[disabled],
+button[disabled] { opacity: .45 !important; }
+.btn .glyphicon,
+.btn .fa,
+button .glyphicon { top: 0 !important; margin: 0 !important; }
+/* Several buttons carry an empty placeholder icon. */
+.glyphicon:empty:not([class*="glyphicon-"]) { display: none !important; }
+
+/* filled */
+.btn-primary,
+.btn-warning,
+button[type="submit"],
+input[type="submit"],
+.remodal-confirm,
+.add-to-cart.btn-danger {
+  background: var(--slp-primary) !important;
+  border-color: var(--slp-primary) !important;
+  color: var(--slp-on-primary) !important;
 }
 
-.btn-primary:active,
-.button:active,
-input[type="submit"]:active {
-  transform: scale(0.97) !important;
-  box-shadow: 0 2px 8px rgba(124,0,26,.15) !important;
+/* tonal */
+.btn-info,
+.add-to-cart.btn-success[type="button"],
+.add-to-cart.btn-default[type="button"] {
+  background: var(--slp-primary-container) !important;
+  border-color: var(--slp-primary-container) !important;
+  color: var(--slp-on-primary-container) !important;
 }
 
-/* ──────── BUTTONS — Secondary (Default) ──────── */
-.btn-default,
-.btn-secondary,
-.btn-outline-primary,
-button.alt {
+/* outlined */
+.btn-default[type="button"],
+a.btn-default,
+.btn-danger,
+.btn-success[type="button"]:not(.add-to-cart),
+.remodal-moreinfor {
   background: transparent !important;
-  color: var(--slp-primary) !important;
-  border: 1px solid var(--slp-outline-var) !important;
-  border-radius: var(--slp-radius-md) !important;
-  padding: 11px 24px !important;
-  font-weight: 600 !important;
-  transition: all var(--slp-dur) var(--slp-ease) !important;
-}
-
-.btn-default:hover,
-.btn-default:focus,
-.btn-default:active {
-  background: var(--slp-surface-c-l) !important;
+  border-color: var(--slp-outline) !important;
   color: var(--slp-primary) !important;
 }
+.add-to-cart.btn-danger {
+  background: var(--slp-primary) !important;
+  border-color: var(--slp-primary) !important;
+  color: var(--slp-on-primary) !important;
+}
 
-/* ──────── FORM INPUTS ──────── */
+/* text */
+.remodal-cancel,
+.remove-btn {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--slp-on-surface-2) !important;
+}
+.remove-btn { color: var(--slp-error) !important; padding: 8px 10px !important; min-height: 40px !important; }
+
+/* A link that only wraps a button must not shrink it. */
+a > button.btn-block { width: 100% !important; }
+
+/* ──────── FORM CONTROLS ──────── */
 input[type="text"],
+input[type="textbox"],
 input[type="email"],
 input[type="password"],
 input[type="number"],
 input[type="tel"],
 input[type="search"],
+input:not([type]),
 textarea,
 select,
-input.input,
 .form-control {
-  border: none !important;
-  border-radius: var(--slp-radius-md) !important;
-  padding: 14px 18px !important;
-  font-size: 15px !important;
-  color: var(--slp-on-surface) !important;
-  background: var(--slp-surface-c-h) !important;
-  transition: all var(--slp-dur) var(--slp-ease) !important;
-  outline: none !important;
+  display: block !important;
   width: 100% !important;
-  margin-bottom: 12px !important;
+  max-width: 100% !important;
+  min-height: 48px !important;
+  height: auto !important;
+  padding: 12px 16px !important;
+  margin: 0 0 12px !important;
+  border: 1px solid var(--slp-outline-2) !important;
+  border-radius: var(--slp-r-md) !important;
+  background-color: var(--slp-surface-1) !important;
+  color: var(--slp-on-surface) !important;
+  font-family: inherit !important;
+  font-size: 16px !important;
+  line-height: 1.4 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  float: none !important;
   -webkit-appearance: none !important;
   appearance: none !important;
+  transition: border-color var(--slp-dur) var(--slp-ease),
+              background-color var(--slp-dur) var(--slp-ease) !important;
 }
+textarea { min-height: 120px !important; resize: vertical !important; }
 
-/* Selects on this site inherit a fixed navbar height that clips the text */
-select,
-select.form-control {
-  height: auto !important;
-  min-height: 48px !important;
-  line-height: 1.4 !important;
+input::placeholder,
+textarea::placeholder {
+  color: var(--slp-outline) !important;
+  opacity: 1 !important;
 }
 
 input:focus,
 textarea:focus,
 select:focus,
 .form-control:focus {
-  box-shadow: 0 0 0 2px var(--slp-secondary) !important;
-  background: var(--slp-surface-c-h) !important;
+  border-color: var(--slp-primary) !important;
+  background-color: var(--slp-surface) !important;
+  box-shadow: 0 0 0 1px var(--slp-primary) !important;
+}
+
+/* appearance:none removes the native arrow; draw one so a select still
+   reads as a select. */
+select,
+select.form-control {
+  padding-right: 40px !important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--slp-on-surface-2) 50%),
+    linear-gradient(135deg, var(--slp-on-surface-2) 50%, transparent 50%) !important;
+  background-position: calc(100% - 21px) 50%, calc(100% - 15px) 50% !important;
+  background-size: 6px 6px, 6px 6px !important;
+  background-repeat: no-repeat !important;
 }
 
 label,
-.form-label,
 .control-label {
-  font-size: 11px !important;
-  font-weight: 500 !important;
-  color: var(--slp-secondary) !important;
-  margin-bottom: 4px !important;
-  margin-left: 4px !important;
   display: block !important;
-  letter-spacing: .6px !important;
-  text-transform: uppercase !important;
+  margin: 0 0 6px 2px !important;
+  color: var(--slp-on-surface-2) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
 }
 
-/* ──────── CHECKBOXES & RADIO ──────── */
 input[type="checkbox"],
 input[type="radio"] {
   width: 20px !important;
   height: 20px !important;
-  accent-color: var(--slp-primary) !important;
-  cursor: pointer !important;
-  margin-right: 8px !important;
+  min-height: 0 !important;
+  margin: 0 10px 0 0 !important;
+  padding: 0 !important;
+  flex: 0 0 auto !important;
+  position: static !important;
   vertical-align: middle !important;
-  border-radius: 4px !important;
+  accent-color: var(--slp-primary) !important;
+  -webkit-appearance: auto !important;
+  appearance: auto !important;
 }
 
-.modal-content {
-  border-radius: var(--slp-radius-lg) !important;
-  border: none !important;
-  box-shadow: var(--slp-shadow-2) !important;
-  padding: 28px !important;
-  margin: 16px auto !important;
-  background: var(--slp-surface-low) !important;
-}
+/* The site marks stock validation on quantity inputs with these. */
+.class_red { border-color: var(--slp-error) !important; background-color: var(--slp-error-container) !important; }
+.class_green { border-color: var(--slp-outline-2) !important; }
 
-.modal-header {
-  border-bottom: none !important;
-  text-align: center !important;
-  padding: 0 0 16px !important;
-}
+fieldset { border: 0 !important; padding: 0 !important; margin: 0 !important; min-width: 0 !important; }
 
-.modal-title {
-  font-weight: 800 !important;
-  color: var(--slp-on-surface) !important;
-  font-size: 24px !important;
-  letter-spacing: -.02em !important;
+/* ──────── QUANTITY STEPPER (built by inject.js around .input-qty) ──────── */
+.slp-stepper {
+  display: inline-flex !important;
+  align-items: stretch !important;
+  height: 44px !important;
+  border: 1px solid var(--slp-outline-2) !important;
+  border-radius: var(--slp-r-md) !important;
+  background: var(--slp-surface-1) !important;
+  overflow: hidden !important;
+  vertical-align: middle !important;
 }
-
-.modal-footer {
-  border-top: none !important;
+.slp-stepper button {
+  flex: 0 0 40px !important;
+  width: 40px !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--slp-primary) !important;
+  font-size: 20px !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
   justify-content: center !important;
 }
-
-/* ──────── HEADINGS ──────── */
-h1, h2, h3, h4, h5 {
-  font-weight: 700 !important;
-  color: var(--slp-on-surface) !important;
-  letter-spacing: -.02em !important;
-  line-height: 1.25 !important;
+.slp-stepper button:active { background: var(--slp-primary-container) !important; }
+.slp-stepper input {
+  flex: 0 0 52px !important;
+  width: 52px !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 4px !important;
+  border: 0 !important;
+  border-left: 1px solid var(--slp-outline-2) !important;
+  border-right: 1px solid var(--slp-outline-2) !important;
+  border-radius: 0 !important;
+  background: var(--slp-surface) !important;
+  box-shadow: none !important;
+  text-align: center !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  -moz-appearance: textfield !important;
 }
+.slp-stepper input::-webkit-outer-spin-button,
+.slp-stepper input::-webkit-inner-spin-button { -webkit-appearance: none !important; margin: 0 !important; }
+.slp-stepper input.class_red { background: var(--slp-error-container) !important; }
 
-h1 { font-size: 24px !important; }
-h2 { font-size: 20px !important; }
-h3 { font-size: 17px !important; }
-
-.section-title,
-.category-title,
-h2.title {
+/* ──────── PASSWORD FIELD (wrapped by inject.js) ──────── */
+.slp-pw-wrap {
   position: relative !important;
-  padding-bottom: 0 !important;
-  margin-bottom: 16px !important;
+  display: block !important;
+  margin: 0 0 12px !important;
+}
+.slp-pw-wrap input { margin: 0 !important; padding-right: 72px !important; }
+.slp-pw-btn {
+  position: absolute !important;
+  top: 0 !important;
+  right: 4px !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: 0 12px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--slp-primary) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+.slp-pw-meter {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  margin: -4px 2px 12px !important;
+  color: var(--slp-on-surface-2) !important;
+  font-size: 12px !important;
+}
+.slp-pw-meter i {
+  flex: 1 !important;
+  height: 4px !important;
+  border-radius: 2px !important;
+  background: var(--slp-surface-3) !important;
+  overflow: hidden !important;
+}
+.slp-pw-meter b {
+  display: block !important;
+  height: 100% !important;
+  width: 0;
+  border-radius: 2px !important;
+  background: var(--slp-error);
+  transition: width .25s var(--slp-ease), background-color .25s var(--slp-ease) !important;
+}
+.slp-pw-meter[hidden] { display: none !important; }
+.slp-pw-meter[data-level="2"] b,
+.slp-pw-meter[data-level="3"] b { background: var(--slp-secondary); }
+.slp-pw-meter[data-level="4"] b,
+.slp-pw-meter[data-level="5"] b { background: var(--slp-success); }
+
+/* ──────── MESSAGES ────────
+   CakePHP flash messages render inside .row.message; cNotify() and
+   #flash / #notification are the site's script-driven ones. */
+.row.message { margin: 0 !important; }
+.row.message > div,
+.message.error,
+.message.success,
+.alert,
+#flash:not(:empty),
+#div-tip {
+  margin: 12px 0 !important;
+  padding: 12px 16px !important;
+  border: 0 !important;
+  border-radius: var(--slp-r-md) !important;
+  background: var(--slp-info-container) !important;
+  color: var(--slp-info) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+}
+.message.error,
+.alert-danger,
+.row.message > .error,
+#flash:not(:empty),
+#div-tip {
+  background: var(--slp-error-container) !important;
+  color: var(--slp-on-error-container) !important;
+}
+.message.success,
+.alert-success,
+.row.message > .success {
+  background: var(--slp-success-container) !important;
+  color: var(--slp-success) !important;
 }
 
-/* ──────── TABLES ──────── */
-table,
-.table {
-  border-radius: var(--slp-radius-md) !important;
-  overflow: hidden !important;
-  box-shadow: var(--slp-shadow-1) !important;
-  border: none !important;
+/* ──────── TABLES (generic - content pages) ──────── */
+table {
+  width: 100% !important;
+  max-width: 100% !important;
   border-collapse: separate !important;
   border-spacing: 0 !important;
-  width: 100% !important;
+  border: 0 !important;
+  background: transparent !important;
 }
-
-table thead th {
-  background: var(--slp-primary) !important;
-  color: var(--slp-on-primary) !important;
-  font-weight: 600 !important;
-  font-size: 11px !important;
-  letter-spacing: .6px !important;
-  text-transform: uppercase !important;
-  border: none !important;
-  padding: 14px 16px !important;
-}
-
-table tbody tr:nth-child(even) td {
-  background: var(--slp-surface-c-l) !important;
-}
-
-table tbody td {
-  padding: 12px 16px !important;
-  border-bottom: 1px solid var(--slp-outline-var) !important;
-  font-size: 14px !important;
-  color: var(--slp-on-surface-v) !important;
-}
-
-/* ──────── ALERTS ──────── */
-.alert,
-.notice {
-  border-radius: var(--slp-radius-md) !important;
-  border: none !important;
-  padding: 14px 18px !important;
-  margin-bottom: 14px !important;
-  font-size: 14px !important;
-}
-
-.alert-danger {
-  background: #FFF0EE !important;
-  color: var(--slp-error) !important;
-}
-
-.alert-success {
-  background: #EDF7ED !important;
-  color: var(--slp-success) !important;
-}
-
-.alert-info {
-  background: #E8F4FD !important;
-  color: var(--slp-tertiary) !important;
-}
-
-.alert-warning {
-  background: #FFF8E6 !important;
-  color: var(--slp-secondary) !important;
-}
-
-/* ──────── CARDS & PANELS ──────── */
-.card,
-.box,
-.widget,
-.well {
-  border-radius: var(--slp-radius-md) !important;
-  border: none !important;
-  box-shadow: var(--slp-shadow-1) !important;
-  overflow: hidden !important;
-  background: var(--slp-surface-low) !important;
-}
-
-/* ──────── BADGES ──────── */
-.badge,
-.label,
-.tag,
-.chip {
-  border-radius: 9999px !important;
-  font-size: 10px !important;
-  font-weight: 700 !important;
-  padding: 4px 10px !important;
-  letter-spacing: .5px !important;
-  text-transform: uppercase !important;
-}
-
-.label-primary,
-.badge-primary {
-  background: var(--slp-primary) !important;
-  color: var(--slp-on-primary) !important;
-}
-
-.label-success,
-.badge-success {
-  background: #EDF7ED !important;
-  color: var(--slp-success) !important;
-}
-
-.label-warning,
-.badge-warning {
-  background: var(--slp-sec-container) !important;
-  color: var(--slp-secondary) !important;
-}
-
-.label-info,
-.badge-info {
-  background: #E8F4FD !important;
-  color: var(--slp-tertiary) !important;
-}
-
-/* ──────── PAGINATION ──────── */
-.pagination > li > a,
-.pagination > li > span {
-  border-radius: var(--slp-radius-sm) !important;
-  border: 1px solid var(--slp-outline-var) !important;
+th, td {
+  padding: 10px 12px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--slp-outline-2) !important;
+  background: transparent !important;
   color: var(--slp-on-surface) !important;
-  margin: 0 3px !important;
-  padding: 8px 14px !important;
+  font-size: 14px !important;
+  line-height: 1.4 !important;
+  text-align: left;
+  vertical-align: top !important;
+}
+th {
+  color: var(--slp-on-surface-2) !important;
   font-weight: 600 !important;
-  transition: all var(--slp-dur) var(--slp-ease) !important;
-  background: var(--slp-surface-low) !important;
+}
+thead th {
+  background: var(--slp-surface-2) !important;
+  font-size: 12px !important;
+  letter-spacing: .3px !important;
+  text-transform: uppercase !important;
 }
 
-.pagination > .active > a,
-.pagination > .active > span {
+/* simplePagination (downloads, search results) */
+.simple-pagination ul {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  margin: 16px 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
+}
+.simple-pagination li { float: none !important; margin: 0 !important; }
+.simple-pagination li a,
+.simple-pagination li span {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  padding: 0 12px !important;
+  margin: 0 !important;
+  border: 1px solid var(--slp-outline-2) !important;
+  border-radius: var(--slp-r-md) !important;
+  background: var(--slp-surface) !important;
+  color: var(--slp-on-surface) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+.simple-pagination li.active span,
+.simple-pagination li.active a {
   background: var(--slp-primary) !important;
   border-color: var(--slp-primary) !important;
   color: var(--slp-on-primary) !important;
 }
+.simple-pagination li.disabled span { opacity: .45 !important; }
 
-/* ──────── LINKS ──────── */
-a {
-  color: var(--slp-primary) !important;
-  text-decoration: none !important;
-  transition: color var(--slp-dur) var(--slp-ease) !important;
+/* ================================================================
+   HOME
+   ================================================================ */
+
+/* Server flash strip; empty on almost every load. */
+.addHomeFlash:empty,
+.addHomeFlash.slp-empty { display: none !important; }
+
+.carousel-holder { margin-top: 12px !important; }
+
+/* ── Announcement carousel ──
+   #slider-carousel > .carousel-inner > .item
+       > .col-sm-6.visible-sm   (tablet copy of the text)
+       > .col-sm-6.hidden-sm    h2 + p + a.btn   (the link is often not a URL)
+       > .col-sm-6              img.slider-image
+   Slides are different heights on the site, so the page jumped every
+   five seconds. Fix the image box and show the heading as a caption. */
+#slider { margin: 0 0 12px !important; padding: 0 !important; }
+#slider .silder-ad-padding { padding: 0 8px !important; }
+#slider-carousel {
+  border-radius: var(--slp-r-lg) !important;
+  overflow: hidden !important;
+  background: var(--slp-surface) !important;
+  border: 1px solid var(--slp-outline-2) !important;
 }
-
-a:hover {
-  color: var(--slp-primary-c) !important;
-  text-decoration: none !important;
+#slider-carousel .carousel-inner > .item.active,
+#slider-carousel .carousel-inner > .item.next,
+#slider-carousel .carousel-inner > .item.prev {
+  display: flex !important;
+  flex-direction: column-reverse !important;
 }
-
-hr,
-.divider {
-  border-color: var(--slp-outline-var) !important;
-  margin: 16px 0 !important;
+#slider-carousel .item { padding: 0 !important; }
+#slider-carousel .item > div {
+  width: 100% !important;
+  float: none !important;
+  padding: 0 !important;
 }
-
-/* ──────── IMAGES ──────── */
-img {
-  max-width: 100% !important;
-  height: auto !important;
-}
-
-/* ──────── DROPDOWN ──────── */
-.dropdown-menu {
-  border-radius: var(--slp-radius-md) !important;
-  border: none !important;
-  box-shadow: var(--slp-shadow-3) !important;
-  padding: 8px 0 !important;
-  animation: slpDropIn .2s var(--slp-ease) !important;
-  background: var(--slp-surface-low) !important;
-}
-
-@keyframes slpDropIn {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.dropdown-menu > li > a {
-  padding: 10px 20px !important;
+#slider-carousel .item > .visible-sm { display: none !important; }
+#slider-carousel .item > .hidden-sm { padding: 10px 14px 28px !important; }
+#slider-carousel .item > .hidden-sm h2 {
+  margin: 0 !important;
+  color: var(--slp-on-surface) !important;
   font-size: 14px !important;
-  transition: background var(--slp-dur) var(--slp-ease) !important;
+  font-weight: 600 !important;
+  line-height: 1.35 !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
 }
-
-.dropdown-menu > li > a:hover {
-  background: var(--slp-surface-c-l) !important;
-  color: var(--slp-primary) !important;
+#slider-carousel .item > .hidden-sm p,
+#slider-carousel .item > .hidden-sm .btn { display: none !important; }
+#slider-carousel img.slider-image {
+  display: block !important;
+  width: 100% !important;
+  height: 52vw !important;
+  max-height: 300px !important;
+  margin: 0 !important;
+  object-fit: contain !important;
+  background: var(--slp-surface-1) !important;
 }
-
-/* ──────── SCROLLBAR ──────── */
-::-webkit-scrollbar { width: 4px !important; height: 4px !important; }
-::-webkit-scrollbar-track { background: transparent !important; }
-::-webkit-scrollbar-thumb {
-  background: var(--slp-outline-var) !important;
-  border-radius: 4px !important;
+#slider-carousel .carousel-indicators {
+  display: flex !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  position: absolute !important;
+  top: auto !important;
+  bottom: 8px !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
-::-webkit-scrollbar-thumb:hover {
+#slider-carousel .carousel-indicators li {
+  width: 6px !important;
+  height: 6px !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: var(--slp-outline-2) !important;
+  text-indent: -999px !important;
+  transition: width var(--slp-dur) var(--slp-ease), background-color var(--slp-dur) var(--slp-ease) !important;
+}
+#slider-carousel .carousel-indicators li.active {
+  width: 18px !important;
+  border-radius: 3px !important;
   background: var(--slp-primary) !important;
 }
+.control-carousel { display: none !important; }
 
-/* ──────── SELECTION ──────── */
-::selection {
-  background: var(--slp-primary-lt) !important;
-  color: var(--slp-on-surface) !important;
+/* ── Quick links ──
+   .slider-side-contetnt.visible-xs  accordion: Standing Order Reloads,
+                                     Check Order Status (forms inside)
+   .slider-side-contetnt.qickLinksPanel  links: Standing Order, Payment
+                                     Methods, and a Play Store badge      */
+.slider-side-contetnt,
+.well.slider-side-contetnt,
+.slider-side-contetnt .well {
+  display: block !important;
+  float: none !important;
+  width: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
-
-/* ──────── RANGE SLIDER ──────── */
-input[type="range"] {
-  accent-color: var(--slp-primary) !important;
+.slider-side-contetnt.hidden-xs { display: none !important; }
+.carousel-holder > .slider-side-contetnt { margin: 0 8px !important; padding: 0 !important; }
+.slider-side-contetnt > [class*="col-"] { padding: 0 !important; }
+.slider-side-contetnt .panel-group { margin: 0 !important; }
+.slider-side-contetnt .panel {
+  margin: 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--slp-outline-2) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
-
-/* ──────── RESPONSIVE ──────── */
-/* Product grid cells are col-xs-12 (full width on phones by default);
-   force a 2-across catalog grid so it reads like a native shop app. */
-@media (max-width: 768px) {
-  .container { padding: 0 12px !important; }
-
-  div[class*="col-lg-3"][class*="col-xs-12"],
-  div[class*="col-md-4"][class*="col-xs-12"] {
-    width: 50% !important;
-    float: left !important;
-    padding-left: 6px !important;
-    padding-right: 6px !important;
-  }
-
-  .productinfo .img-wrapper img,
-  img.product-thumb-image {
-    max-height: 140px !important;
-    padding: 12px !important;
-  }
-
-  .productinfo .caption a {
-    font-size: 12px !important;
-  }
-
-  h1 { font-size: 20px !important; }
-  h2 { font-size: 18px !important; }
-}
-
-/* ──────── BOTTOM BREATHING ROOM ──────── */
-/* The BottomNavigationView is a true layout sibling (not an overlay), so no
-   large clearance is needed — just a comfortable bottom margin for readability. */
-body {
-  padding-bottom: 24px !important;
-}
-
-/* ──────── STAR RATING ──────── */
-.star-rating,
-.rating,
-.product-rating {
-  color: #FFA726 !important;
-}
-
-/* ──────── HOME PAGE ──────── */
-
-/* Container behind the whole content area (site ships a busy background) */
-.content-back {
+.slider-side-contetnt .panel-heading {
+  padding: 0 !important;
+  border: 0 !important;
   background: transparent !important;
 }
+.slider-side-contetnt .panel-title { margin: 0 !important; }
+.slider-side-contetnt .panel-title a {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  min-height: 48px !important;
+  padding: 8px 4px !important;
+  color: var(--slp-on-surface) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+}
+.slider-side-contetnt .panel-title a::after {
+  content: "" !important;
+  width: 8px !important;
+  height: 8px !important;
+  margin-right: 6px !important;
+  border-right: 2px solid var(--slp-outline) !important;
+  border-bottom: 2px solid var(--slp-outline) !important;
+  transform: rotate(-45deg) !important;
+  transition: transform var(--slp-dur) var(--slp-ease) !important;
+}
+.slider-side-contetnt .panel-title a[data-toggle="collapse"]::after { transform: rotate(45deg) !important; }
+.slider-side-contetnt .panel-title a[aria-expanded="true"]::after { transform: rotate(-135deg) !important; }
+.slider-side-contetnt .panel-collapse { padding: 4px 4px 16px !important; }
+.slider-side-contetnt .panel-collapse .left-sidebar,
+.slider-side-contetnt .panel-collapse .columns,
+.slider-side-contetnt .panel-collapse .qickLinksPanel {
+  float: none !important;
+  width: auto !important;
+}
+.slider-side-contetnt .panel-collapse br { display: none !important; }
+.slider-side-contetnt .panel-collapse p { margin: 0 0 8px !important; color: var(--slp-on-surface-2) !important; }
+.slider-side-contetnt .payment-method-img { margin: 0 0 12px !important; }
+.slider-side-contetnt .payment-method-img img { height: 28px !important; width: auto !important; }
+/* Inside the app, a "get the Android app" badge is noise. */
+.panel-bestWeb,
+#play_store_downloand_link { display: none !important; }
 
-/* Announcement/news flash strip → M3 card */
-.addHomeFlash {
-  background: var(--slp-surface-low) !important;
-  border-radius: var(--slp-radius-md) !important;
+/* ── Cart summary bar + search ──
+   #categories > .left-sidebar > #left-side-sticky
+       a[href=/cart-view] > button.view-cart-buttonwithP
+       #search-menu.well  (h2.lead, #accordian checkboxes, form.form-inline)
+   inject.js adds .slp-search-row / .slp-filters around the existing
+   controls; without it the panel still renders, just uncollapsed. */
+#categories { margin-top: 16px !important; }
+#left-side-sticky {
+  position: static !important;
+  width: auto !important;
+}
+#left-side-sticky > br { display: none !important; }
+button.btn.view-cart-buttonwithP {
+  justify-content: flex-start !important;
+  min-height: 48px !important;
+  margin: 0 0 12px !important;
+  border-radius: var(--slp-r-md) !important;
+  font-size: 14px !important;
+  text-transform: none !important;
+}
+
+#search-menu {
+  margin: 0 0 8px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  min-height: 0 !important;
+}
+#search-menu > h2.lead { display: none !important; }
+#search-menu > br { display: none !important; }
+
+.slp-search-row {
+  display: flex !important;
+  gap: 8px !important;
+  align-items: stretch !important;
+}
+.slp-search-row input {
+  flex: 1 1 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  border-radius: var(--slp-r-pill) !important;
+  padding-left: 20px !important;
+}
+.slp-search-row #searchButton {
+  flex: 0 0 auto !important;
+  min-height: 48px !important;
+  border-radius: var(--slp-r-pill) !important;
+}
+.slp-filter-toggle {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 40px !important;
+  margin: 6px 0 0 !important;
+  padding: 0 12px 0 4px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--slp-primary) !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+.slp-filter-toggle::after {
+  content: "" !important;
+  width: 7px !important;
+  height: 7px !important;
+  margin-top: -3px !important;
+  border-right: 2px solid currentColor !important;
+  border-bottom: 2px solid currentColor !important;
+  transform: rotate(45deg) !important;
+  transition: transform var(--slp-dur) var(--slp-ease) !important;
+}
+.slp-filter-toggle[aria-expanded="true"]::after { transform: rotate(-135deg) !important; margin-top: 4px !important; }
+.slp-filter-count {
+  min-width: 20px !important;
+  height: 20px !important;
+  padding: 0 6px !important;
+  border-radius: 10px !important;
+  background: var(--slp-primary) !important;
+  color: var(--slp-on-primary) !important;
+  font-size: 11px !important;
+  line-height: 20px !important;
+  text-align: center !important;
+}
+.slp-filter-count:empty { display: none !important; }
+.slp-filters {
+  margin: 4px 0 8px !important;
+  padding: 14px !important;
+  border: 1px solid var(--slp-outline-2) !important;
+  border-radius: var(--slp-r-lg) !important;
+  background: var(--slp-surface) !important;
+}
+.slp-filters[hidden] { display: none !important; }
+
+/* Category checkboxes: div.panel > div.input.checkbox > label > input */
+#accordian {
+  margin: 0 0 8px !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+#accordian .panel {
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+#accordian .checkbox,
+#accordian .input.checkbox {
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+}
+#accordian .checkbox label {
+  display: flex !important;
+  align-items: center !important;
+  min-height: 44px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  color: var(--slp-on-surface) !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+}
+#accordian .panel-heading {
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+#accordian .panel-title { margin: 0 !important; }
+#accordian .panel-title a {
+  display: flex !important;
+  flex-direction: row-reverse !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  min-height: 44px !important;
+  color: var(--slp-on-surface-2) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+}
+#accordian .panel-title .badge {
+  float: none !important;
+  padding: 0 !important;
+  background: transparent !important;
+  color: var(--slp-on-surface-2) !important;
+  font-size: 12px !important;
+}
+#accordian .panel-body { padding: 0 !important; border: 0 !important; }
+#accordian .panel-body ul { margin: 0 !important; padding: 0 !important; list-style: none !important; }
+
+.slp-filters .form-inline { margin: 0 !important; }
+.slp-filters .form-group {
+  display: block !important;
+  margin: 12px 0 0 !important;
+}
+.slp-filters .form-group p { margin: 0 !important; }
+.slp-filters select { margin: 0 !important; }
+#price-range {
+  margin: 0 0 14px !important;
+  color: var(--slp-on-surface) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+/* noUiSlider */
+#slider-range {
+  height: 4px !important;
+  margin: 0 14px 10px !important;
+  border: 0 !important;
+  border-radius: 2px !important;
+  background: var(--slp-surface-3) !important;
+  box-shadow: none !important;
+}
+#slider-range .noUi-handle {
+  top: -12px !important;
+  left: -14px !important;
+  width: 28px !important;
+  height: 28px !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: var(--slp-primary) !important;
   box-shadow: var(--slp-shadow-1) !important;
-  padding: 10px 12px !important;
-  margin: 12px 0 !important;
-  border: none !important;
+}
+#slider-range .noUi-handle::before,
+#slider-range .noUi-handle::after { display: none !important; }
+
+/* ── Product grid ──
+   Cards are Bootstrap columns (col-sm-4 … col-xs-12) holding
+     .thumbnail.cart-thumb.product-image-wrapper
+       > .single-product > .productinfo
+           (.img-wrapper > img, label.item-type, .caption > p > a,
+            .value > h2, .long-desc = desktop hover sheet)
+         > .choose > .button-addto-cart > a > button.add-to-cart
+   Their parents are listed here so the grid applies at first paint;
+   inject.js adds .slp-card-grid to any other parent (related items). */
+#resultPanel { margin: 0 !important; padding: 0 8px !important; }
+#resultPanel > .catagories-heading,
+#resultPanel > .row,
+.tab-content > .tab-pane.active,
+.slp-card-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  float: none !important;
+  width: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+#resultPanel > .catagories-heading::before,
+#resultPanel > .catagories-heading::after,
+#resultPanel > .row::before,
+#resultPanel > .row::after,
+.tab-content > .tab-pane::before,
+.tab-content > .tab-pane::after,
+.slp-card-grid::before,
+.slp-card-grid::after { display: none !important; }
+#resultPanel > .catagories-heading { min-height: 0 !important; }
+.tab-content > .tab-pane:not(.active) { display: none !important; }
+.tab-content { padding: 0 8px !important; }
+
+/* Anything in a grid that is not a card spans the row. */
+#resultPanel > .catagories-heading > :not([class*="col-sm-4"]),
+#resultPanel > .row > :not([class*="col-sm-4"]),
+.tab-content > .tab-pane > :not([class*="col-sm-4"]),
+.slp-card-grid > :not([class*="col-sm-4"]) {
+  grid-column: 1 / -1 !important;
+  width: auto !important;
+  float: none !important;
+  padding: 0 !important;
+}
+#resultPanel > .catagories-heading > [class*="col-sm-4"],
+#resultPanel > .row > [class*="col-sm-4"],
+.tab-content > .tab-pane > [class*="col-sm-4"],
+.slp-card-grid > [class*="col-sm-4"] {
+  width: auto !important;
+  float: none !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+}
+
+h2.title,
+.showHeadingYear h3,
+.slp-section-title {
+  display: block !important;
+  margin: 20px 0 2px !important;
+  padding: 0 !important;
+  color: var(--slp-on-surface) !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  text-align: left !important;
+  text-transform: none !important;
+  background: none !important;
+}
+h2.title,
+.showHeadingYear,
+.showHeadingYear h3 { border: 0 !important; }
+h2.title::before,
+h2.title::after { display: none !important; }
+
+.product-image-wrapper {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 1px solid var(--slp-outline-2) !important;
+  border-radius: var(--slp-r-lg) !important;
+  background: var(--slp-surface) !important;
+  box-shadow: none !important;
   overflow: hidden !important;
+  transition: transform var(--slp-dur) var(--slp-ease) !important;
 }
+.product-image-wrapper:active { transform: scale(.985) !important; }
+.single-product {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  height: auto !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+.single-product .productinfo {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  height: auto !important;
+  text-align: left !important;
+}
+.single-product .long-desc { display: none !important; }
 
-/* Hero slider — rounded card look */
-#slider,
-#slider-carousel {
-  border-radius: var(--slp-radius-md) !important;
+.productinfo .img-wrapper {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 132px !important;
+  line-height: normal !important;
+  padding: 12px !important;
+  background: var(--slp-surface-1) !important;
+}
+.productinfo .img-wrapper img {
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  object-fit: contain !important;
+  background: transparent !important;
+}
+img.new-img-corner {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 2 !important;
+  width: 44px !important;
+  height: auto !important;
+}
+label.item-type {
+  margin: 10px 12px 2px !important;
+  padding: 0 !important;
+  color: var(--slp-secondary) !important;
+  background: transparent !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  letter-spacing: .6px !important;
+  line-height: 1.3 !important;
+  text-transform: uppercase !important;
+}
+.productinfo .caption { padding: 0 12px !important; }
+.productinfo .caption p { margin: 0 !important; }
+.productinfo .caption a {
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  min-height: 2.7em !important;
   overflow: hidden !important;
+  color: var(--slp-on-surface) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  line-height: 1.35 !important;
 }
-#slider-carousel .carousel-inner img {
-  border-radius: var(--slp-radius-md) !important;
+.productinfo .value {
+  margin-top: auto !important;
+  padding: 6px 12px 12px !important;
+}
+/* With a button underneath, the button's own padding does the spacing. */
+.single-product:not(:last-child) .productinfo .value { padding-bottom: 2px !important; }
+.productinfo .value h2 {
+  margin: 0 !important;
+  color: var(--slp-primary) !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0 !important;
+}
+.product-image-wrapper .choose {
+  flex: 0 0 auto !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 10px !important;
+  border: 0 !important;
+}
+.product-image-wrapper .choose a { display: block !important; }
+.product-image-wrapper .choose .btn {
+  width: 100% !important;
+  min-height: 40px !important;
+  padding: 8px 10px !important;
+  font-size: 13px !important;
+  border-radius: var(--slp-r-pill) !important;
 }
 
-/* ──────── LOGIN / REGISTER FORMS (site-specific markup) ──────── */
+/* ── Category tabs: ul.nav.nav-tabs > li > a[data-toggle=tab] ── */
+.category-tab {
+  margin: 20px 0 12px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: visible !important;
+}
+.category-tab > .col-sm-12 { padding: 0 8px !important; float: none !important; }
+.nav-tabs {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+  margin: 0 calc(-1 * var(--slp-gutter)) !important;
+  padding: 2px var(--slp-gutter) !important;
+  border: 0 !important;
+  background: transparent !important;
+  overflow-x: auto !important;
+  scrollbar-width: none !important;
+}
+.nav-tabs::-webkit-scrollbar { display: none !important; }
+.nav-tabs > li { float: none !important; flex: 0 0 auto !important; margin: 0 !important; }
+.nav-tabs > li > a,
+.nav-tabs > li > a:hover,
+.nav-tabs > li > a:focus {
+  display: flex !important;
+  align-items: center !important;
+  min-height: 40px !important;
+  margin: 0 !important;
+  padding: 0 16px !important;
+  border: 1px solid var(--slp-outline-2) !important;
+  border-radius: var(--slp-r-pill) !important;
+  background: var(--slp-surface) !important;
+  color: var(--slp-on-surface-2) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+}
+.nav-tabs > li.active > a,
+.nav-tabs > li.active > a:hover,
+.nav-tabs > li.active > a:focus {
+  border-color: var(--slp-primary) !important;
+  background: var(--slp-primary) !important;
+  color: var(--slp-on-primary) !important;
+}
 
-/* The /login page renders a .profile card and a register form container */
-.profile,
-.profile--open,
-.register-form.container {
+/* ── Add-to-cart sheet (remodal) ──
+   .remodal-wrapper > .remodal#remodal
+       button.remodal-close
+       > div > form#form (.product-view > img#remodelImg, h3#name,
+               p#purpose, #value, #quantity, table#product-view-table)
+             br, button.remodal-cancel, a#moreInforLink > button,
+             button#submit.remodal-confirm                            */
+.remodal-overlay { background: var(--slp-scrim) !important; }
+.remodal-wrapper { padding: 16px !important; }
+.remodal {
+  width: 100% !important;
   max-width: 440px !important;
-  margin: 24px auto !important;
-  padding: 28px 24px !important;
-  border-radius: var(--slp-radius-lg) !important;
-  background: var(--slp-surface-low) !important;
+  margin: 0 auto !important;
+  padding: 20px !important;
+  border: 0 !important;
+  border-radius: var(--slp-r-xl) !important;
+  background: var(--slp-surface) !important;
+  color: var(--slp-on-surface) !important;
   box-shadow: var(--slp-shadow-2) !important;
-  border: none !important;
+  text-align: left !important;
+}
+.remodal-close {
+  top: 8px !important;
+  left: auto !important;
+  right: 8px !important;
+  width: 40px !important;
+  height: 40px !important;
+  min-height: 0 !important;
+  color: var(--slp-on-surface-2) !important;
+}
+.remodal.remodal-is-initialized {
+  display: inline-flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+.remodal > div { flex: 0 0 100% !important; min-width: 0 !important; }
+.remodal > br { display: none !important; }
+.remodal > .remodal-confirm { order: 1 !important; flex: 0 0 100% !important; min-height: 48px !important; }
+.remodal > a { order: 2 !important; flex: 1 1 0 !important; display: flex !important; }
+.remodal > a > button { flex: 1 !important; }
+.remodal > .remodal-cancel { order: 3 !important; flex: 1 1 0 !important; }
+.remodal .row { margin: 0 !important; }
+.remodal .row > [class*="col-"] { padding: 0 !important; width: 100% !important; float: none !important; }
+.remodal .product-view {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 150px !important;
+  margin: 0 32px 12px 0 !important;
+  padding: 10px !important;
+  border-radius: var(--slp-r-md) !important;
+  background: var(--slp-surface-1) !important;
+}
+.remodal .product-view img {
+  max-width: 100% !important;
+  max-height: 100% !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: contain !important;
+}
+.remodal #name { margin: 0 0 2px !important; font-size: 17px !important; }
+.remodal .column p {
+  margin: 0 !important;
+  color: var(--slp-on-surface-2) !important;
+  font-size: 14px !important;
+}
+.remodal #value {
+  color: var(--slp-primary) !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+}
+.remodal #product-view-table { margin: 12px 0 8px !important; }
+.remodal #product-view-table tbody,
+.remodal #product-view-table tr { display: block !important; }
+.remodal #product-view-table tr:not(:first-child) {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 6px 0 !important;
+}
+.remodal #product-view-table th,
+.remodal #product-view-table td {
+  display: block !important;
+  padding: 0 !important;
+  border: 0 !important;
+  font-size: 15px !important;
+}
+.remodal #div-tip { margin: 0 0 4px !important; }
+.remodal .modal-body .input-qty,
+.remodal .input-qty { width: 52px !important; }
+
+/* ================================================================
+   PRODUCT DETAIL  (/product/<id>)
+     h1 > span "BUY" + name
+     .product-view > img[data-zoom-image] + .item-price
+     .product > form[action=/add-to-cart]
+         table.table-compact            spec sheet: th td th td per row
+         table#product-view-table       "ORDER NOW": Mint Qty, Cancelled Qty
+         button[type=submit].add-to-cart
+     .row > .column > span "Related Items", then product cards
+   ================================================================ */
+body.slp-page-product-detail #main-content h1 {
+  margin: 16px 0 12px !important;
+  font-size: 20px !important;
+  line-height: 1.3 !important;
+}
+/* The orange italic "BUY" prefix. */
+body.slp-page-product-detail #main-content h1 > span { display: none !important; }
+
+body.slp-page-product-detail .product-view {
+  margin: 0 0 16px !important;
+  text-align: left !important;
+}
+body.slp-page-product-detail .product-view > img {
+  display: block !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: 340px !important;
+  margin: 0 !important;
+  padding: 16px !important;
+  border: 1px solid var(--slp-outline-2) !important;
+  border-radius: var(--slp-r-lg) !important;
+  background: var(--slp-surface-1) !important;
+  object-fit: contain !important;
+  cursor: zoom-in !important;
+}
+body.slp-page-product-detail .item-price {
+  display: block !important;
+  margin: 14px 2px 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--slp-primary) !important;
+  font-size: 26px !important;
+  font-weight: 800 !important;
+  line-height: 1.1 !important;
+  text-align: left !important;
+}
+/* The image column is col-sm-2: a sliver on a tablet. Stack at every width. */
+body.slp-page-product-detail #main-content .row > .column[class*="col-sm-2"],
+body.slp-page-product-detail .product { float: none !important; width: auto !important; }
+body.slp-page-product-detail .product form > .column { padding: 0 !important; float: none !important; width: auto !important; }
+body.slp-page-product-detail .product form > br { display: none !important; }
+
+/* Spec sheet: reflow "th td th td" rows into label/value pairs. */
+body.slp-page-product-detail .product table.table-compact:not(#product-view-table) {
+  display: block !important;
+  margin: 0 0 16px !important;
+  border: 1px solid var(--slp-outline-2) !important;
+  border-radius: var(--slp-r-lg) !important;
+  background: var(--slp-surface) !important;
+  overflow: hidden !important;
+}
+/* -1px tucks the last row's divider under the card's clipped edge, at
+   either column count. */
+body.slp-page-product-detail .product table.table-compact:not(#product-view-table) tbody {
+  display: block !important;
+  margin-bottom: -1px !important;
+}
+body.slp-page-product-detail .product table.table-compact:not(#product-view-table) tr {
+  display: grid !important;
+  grid-template-columns: minmax(0, 42%) minmax(0, 1fr) !important;
+}
+body.slp-page-product-detail .product table.table-compact:not(#product-view-table) th,
+body.slp-page-product-detail .product table.table-compact:not(#product-view-table) td {
+  display: block !important;
+  width: auto !important;
+  min-width: 0 !important;
+  padding: 11px 14px !important;
+  border-bottom: 1px solid var(--slp-outline-2) !important;
+  font-size: 14px !important;
+  overflow-wrap: anywhere !important;
+}
+body.slp-page-product-detail .product table.table-compact:not(#product-view-table) th {
+  color: var(--slp-on-surface-2) !important;
+  font-weight: 500 !important;
+}
+body.slp-page-product-detail .product table.table-compact:not(#product-view-table) td[colspan] {
+  grid-column: 2 / -1 !important;
+}
+body.slp-page-product-detail .product table.table-compact:not(#product-view-table) td {
+  font-weight: 600 !important;
+  min-height: 42px !important;
+}
+/* Order box */
+body.slp-page-product-detail #product-view-table {
+  display: block !important;
+  margin: 0 0 16px !important;
+  padding: 14px !important;
+  border: 1px solid var(--slp-outline-2) !important;
+  border-radius: var(--slp-r-lg) !important;
+  background: var(--slp-surface) !important;
+}
+body.slp-page-product-detail #product-view-table tbody { display: block !important; }
+body.slp-page-product-detail #product-view-table tr {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  row-gap: 10px !important;
+}
+body.slp-page-product-detail #product-view-table th,
+body.slp-page-product-detail #product-view-table td {
+  display: block !important;
+  padding: 0 !important;
+  border: 0 !important;
+  text-align: left !important;
+  font-size: 15px !important;
+}
+body.slp-page-product-detail #product-view-table th[colspan] {
+  grid-column: 1 / -1 !important;
+  margin-bottom: 10px !important;
+  color: var(--slp-secondary) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: .8px !important;
+}
+body.slp-page-product-detail #product-view-table th { color: var(--slp-on-surface) !important; font-weight: 500 !important; }
+
+/* Add to Cart stays reachable while the spec sheet scrolls. */
+body.slp-page-product-detail .product form > button[type="submit"] {
+  position: sticky !important;
+  bottom: 12px !important;
+  z-index: 5 !important;
+  width: 100% !important;
+  min-height: 52px !important;
+  font-size: 16px !important;
+  border-radius: var(--slp-r-pill) !important;
+  box-shadow: var(--slp-shadow-2) !important;
+}
+
+.slp-section-title { margin: 28px 0 4px !important; }
+
+/* elevateZoom builds a desktop hover-zoom window beside the image; on a
+   phone it only adds horizontal overflow. */
+.zoomContainer,
+.zoomWindowContainer { display: none !important; }
+
+/* Tap-to-zoom overlay (inject.js) */
+.slp-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 99999 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 12px !important;
+  background: var(--slp-viewer) !important;
+  touch-action: pinch-zoom !important;
+}
+.slp-overlay img {
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+  border-radius: var(--slp-r-sm) !important;
+}
+.slp-overlay button {
+  position: absolute !important;
+  top: 12px !important;
+  right: 12px !important;
+  width: 44px !important;
+  height: 44px !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: var(--slp-viewer-control) !important;
+  color: var(--slp-on-viewer) !important;
+  font-size: 24px !important;
+  line-height: 1 !important;
+}
+
+/* ================================================================
+   CART  (/cart-view)
+     form#cart_view_form
+       .authUserAddressBar
+       table.table-bordered
+         thead
+         tbody
+           tr  item:     td(img) td.remove-padding(table.custom-border)
+                         td(mint input) td(cancelled input)
+                         td.text-right(amount) td.actions(a.remove-cart-item)
+           tr  subtotal: th.image-holder th td td td td
+           tr  postage:  th td(#idPostage) td
+           tr  total:    th td td th(#idGrandTotal) td
+           tr#no-shipping-message  (hidden by inline style)
+       .row.no-side-margin > .columns × 5   action buttons
+
+   Rows are distinguished structurally: an item row starts with a td,
+   a summary row starts with a th. No JavaScript is involved, so the
+   table never flashes in its desktop form while a page loads.
+   ================================================================ */
+body.slp-page-cart .cart-view { margin: 0 !important; }
+body.slp-page-cart #cart_view_form > .row { margin: 0 !important; }
+body.slp-page-cart #cart_view_form > .row > [class*="col-"] { padding: 0 !important; float: none !important; width: auto !important; }
+
+body.slp-page-cart .authUserAddressBar {
+  margin: 16px 0 12px !important;
+  padding: 12px 14px !important;
+  border: 0 !important;
+  border-radius: var(--slp-r-md) !important;
+  background: var(--slp-surface-2) !important;
+  color: var(--slp-on-surface-2) !important;
+  font-size: 14px !important;
+}
+body.slp-page-cart .authUserAddressBar strong { color: var(--slp-on-surface) !important; }
+
+body.slp-page-cart #cart_view_form > .row > div > table,
+body.slp-page-cart #cart_view_form > .row > div > table > tbody { display: block !important; }
+body.slp-page-cart #cart_view_form > .row > div > table > thead { display: none !important; }
+body.slp-page-cart #cart_view_form > .row > div > table { margin: 0 0 16px !important; }
+
+/* R = one body row of the cart table, excluding the hidden notice row.
+   Every rule below starts from it so they all carry the same weight. */
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message) {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  margin: 0 0 12px !important;
+  padding: 14px !important;
+  border: 1px solid var(--slp-outline-2) !important;
+  border-radius: var(--slp-r-lg) !important;
+  background: var(--slp-surface) !important;
+}
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message) > td,
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message) > th {
+  display: block !important;
+  width: auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+body.slp-page-cart #no-shipping-message > td {
+  margin: 0 0 12px !important;
+  padding: 12px 14px !important;
+  border-radius: var(--slp-r-md) !important;
+  background: var(--slp-error-container) !important;
+  color: var(--slp-on-error-container) !important;
+}
+
+/* ── item row: [image][name, price, stock] / [Mint][Cancelled] / [amount][Remove] ── */
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message) > td:first-child {
+  flex: 0 0 76px !important;
+  align-self: flex-start !important;
+  height: 76px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 6px !important;
+  border-radius: var(--slp-r-md) !important;
+  background: var(--slp-surface-1) !important;
+}
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message) > td:first-child img {
+  max-width: 100% !important;
+  max-height: 100% !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: contain !important;
+}
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message) > td.remove-padding {
+  flex: 0 0 calc(100% - 76px) !important;
+  min-width: 0 !important;
+  padding: 0 0 0 12px !important;
+  align-self: flex-start !important;
+}
+/* nested: tr > td[colspan=4] > strong (name); tr > th td th td (price, stock) */
+body.slp-page-cart td.remove-padding table,
+body.slp-page-cart td.remove-padding tbody,
+body.slp-page-cart td.remove-padding tr { display: block !important; margin: 0 !important; }
+body.slp-page-cart td.remove-padding th,
+body.slp-page-cart td.remove-padding td {
+  display: inline !important;
+  width: auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+  color: var(--slp-on-surface-2) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}
+body.slp-page-cart td.remove-padding td[colspan] {
+  display: block !important;
+  margin: 0 0 4px !important;
+}
+body.slp-page-cart td.remove-padding td[colspan] strong {
+  color: var(--slp-on-surface) !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+}
+body.slp-page-cart td.remove-padding th::after { content: ": " !important; }
+body.slp-page-cart td.remove-padding td.all-borders::after { content: "\A" !important; white-space: pre !important; }
+
+/* quantities: the 3rd and 4th td of an item row */
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message) > td:first-child ~ td:nth-of-type(3),
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message) > td:first-child ~ td:nth-of-type(4) {
+  flex: 0 0 50% !important;
+  margin-top: 14px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 6px !important;
+}
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message) > td:first-child ~ td:nth-of-type(3)::before { content: "Mint" !important; }
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message) > td:first-child ~ td:nth-of-type(4)::before { content: "Cancelled" !important; }
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message) > td:first-child ~ td:nth-of-type(3)::before,
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message) > td:first-child ~ td:nth-of-type(4)::before {
+  color: var(--slp-on-surface-2) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+/* before inject.js wraps it in a stepper */
+body.slp-page-cart #cart_view_form td > .input-qty {
+  width: 132px !important;
+  min-height: 44px !important;
+  margin: 0 !important;
+  text-align: center !important;
+}
+/* amount + remove share the card's last line */
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message) > td:first-child ~ td.text-right {
+  flex: 1 1 0 !important;
+  margin-top: 12px !important;
+  color: var(--slp-on-surface) !important;
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  line-height: 40px !important;
+  text-align: left !important;
+}
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message) > td:first-child ~ td.text-right::before {
+  content: "LKR " !important;
+  color: var(--slp-on-surface-2) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message) > td.actions {
+  flex: 0 0 auto !important;
+  margin-top: 12px !important;
+}
+
+/* ── summary rows (sub total, postage, grand total) ──
+   A row cannot be selected by what it contains, so inject.js tags the
+   rows that start with a <th> as .slp-sum and marks the label / value
+   cells. Until it has run they show as three small cards. */
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message).slp-sum {
+  flex-wrap: nowrap !important;
+  gap: 12px !important;
+  margin: 0 !important;
+  padding: 8px 14px !important;
+  border-width: 0 1px !important;
+  border-radius: 0 !important;
+  background: var(--slp-surface-2) !important;
+}
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message).slp-sum-first {
+  padding-top: 14px !important;
+  border-top-width: 1px !important;
+  border-radius: var(--slp-r-lg) var(--slp-r-lg) 0 0 !important;
+}
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message).slp-sum-last {
+  margin-bottom: 16px !important;
+  padding-bottom: 14px !important;
+  border-bottom-width: 1px !important;
+  border-radius: 0 0 var(--slp-r-lg) var(--slp-r-lg) !important;
+}
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message) > th.image-holder,
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message) > .slp-sum-hide { display: none !important; }
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message).slp-sum > th {
+  flex: 1 1 auto !important;
+  color: var(--slp-on-surface-2) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  text-align: left !important;
+}
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message).slp-sum > .slp-sum-value {
+  flex: 0 1 auto !important;
+  max-width: 62% !important;
+  color: var(--slp-on-surface) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  text-align: right !important;
+}
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message).slp-sum-last > th,
+body.slp-page-cart #cart_view_form > .row > div > table > tbody > tr:not(#no-shipping-message).slp-sum-last > .slp-sum-value {
+  color: var(--slp-on-surface) !important;
+  font-size: 17px !important;
+  font-weight: 800 !important;
+}
+body.slp-page-cart #idPostage span {
+  color: var(--slp-on-surface-2) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+}
+
+/* action buttons */
+body.slp-page-cart #cart_view_form > .row.no-side-margin:last-of-type {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
+}
+body.slp-page-cart #cart_view_form > .row.no-side-margin:last-of-type::before,
+body.slp-page-cart #cart_view_form > .row.no-side-margin:last-of-type::after { display: none !important; }
+body.slp-page-cart #cart_view_form > .row.no-side-margin:last-of-type > a { display: none !important; }
+body.slp-page-cart #cart_view_form > .row.no-side-margin:last-of-type > .columns {
+  padding: 0 !important;
+  width: auto !important;
   float: none !important;
 }
-
-.profile__fields .field {
-  margin-bottom: 4px !important;
+body.slp-page-cart #cart_view_form > .row.no-side-margin:last-of-type > .columns:nth-of-type(n+3) { grid-column: 1 / -1 !important; }
+body.slp-page-cart #cart_view_form > .row.no-side-margin:last-of-type .columns > a { display: block !important; }
+body.slp-page-cart #cart_view_form > .row.no-side-margin:last-of-type .btn { width: 100% !important; min-height: 48px !important; }
+body.slp-page-cart #cart_view_form .add-to-cart,
+body.slp-page-cart #continue-shipping {
+  background: var(--slp-primary) !important;
+  border-color: var(--slp-primary) !important;
+  color: var(--slp-on-primary) !important;
+  min-height: 52px !important;
+  font-size: 16px !important;
+  border-radius: var(--slp-r-pill) !important;
 }
-
-/* Sign-in card built by inject.js from the navbar's .home-login form.
-   The site CSS sizes that form for the navbar (width:40%, inline groups,
-   tiny 10px inputs) — reset all of it for the card context. */
-.slp-login-card {
-  display: block !important;
-  max-width: 440px !important;
-  margin: 24px auto 8px !important;
-  padding: 28px 24px !important;
-  border-radius: var(--slp-radius-lg) !important;
-  background: var(--slp-surface-low) !important;
-  box-shadow: var(--slp-shadow-2) !important;
+/* "Update Cart" is promoted once a quantity has been changed (inject.js). */
+body.slp-page-cart #submit-ajax.slp-dirty {
+  background: var(--slp-primary-container) !important;
+  border-color: var(--slp-primary-container) !important;
+  color: var(--slp-on-primary-container) !important;
 }
-.slp-login-card h2 {
+.slp-hint {
+  margin: 0 0 10px !important;
+  color: var(--slp-on-surface-2) !important;
+  font-size: 13px !important;
+}
+.slp-hint[hidden] { display: none !important; }
+body.slp-page-cart .cart-view-page ~ br { display: none !important; }
+
+/* empty cart: <br>×3 <hr> <center> h1 h2 <br> <p> a>button </center> <hr> */
+body.slp-page-cart #main-content center {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  padding: 56px 16px 24px !important;
   text-align: center !important;
-  margin: 0 0 18px !important;
 }
+body.slp-page-cart #main-content center::before {
+  content: "\f07a" !important;
+  font-family: FontAwesome !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 96px !important;
+  height: 96px !important;
+  margin-bottom: 20px !important;
+  border-radius: 50% !important;
+  background: var(--slp-primary-container) !important;
+  color: var(--slp-primary) !important;
+  font-size: 40px !important;
+}
+body.slp-page-cart #main-content center h1 { display: none !important; }
+body.slp-page-cart #main-content center h2 {
+  max-width: 300px !important;
+  margin: 0 0 24px !important;
+  color: var(--slp-on-surface) !important;
+  font-size: 17px !important;
+  font-weight: 600 !important;
+  line-height: 1.4 !important;
+}
+body.slp-page-cart #main-content center br,
+body.slp-page-cart #main-content center p,
+body.slp-page-cart #main-content center ~ hr,
+body.slp-page-cart #main-content .col-xs-12 > br,
+body.slp-page-cart #main-content .col-xs-12 > hr { display: none !important; }
+body.slp-page-cart #main-content center .btn {
+  min-width: 200px !important;
+  min-height: 48px !important;
+  border-radius: var(--slp-r-pill) !important;
+}
+
+/* ================================================================
+   SIGN IN / REGISTER / FORGOT PASSWORD
+     /login              #registetModal.register-form  (+ the navbar
+                         sign-in form, lifted into .slp-login-card)
+     /users/login-view   #loginModal .modal-content .modal-content
+     /users/password     .users.content
+   ================================================================ */
+.slp-login-card,
+#registetModal,
+body.slp-page-login #loginModal,
+body.slp-page-login .users.content {
+  width: auto !important;
+  max-width: 440px !important;
+  float: none !important;
+  margin: 16px auto !important;
+  padding: 20px !important;
+  border: 1px solid var(--slp-outline-2) !important;
+  border-radius: var(--slp-r-xl) !important;
+  background: var(--slp-surface) !important;
+  box-shadow: none !important;
+}
+.slp-login-card h2,
+#registetModal .modal-title,
+#loginModal .modal-title,
+body.slp-page-login .users.content h3 {
+  margin: 0 0 16px !important;
+  padding: 0 !important;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0 !important;
+  text-align: left !important;
+  text-transform: none !important;
+}
+body.slp-page-login .users.content hr { display: none !important; }
+body.slp-page-login .users.content form br { display: none !important; }
+body.slp-page-login .users.content button { width: 100% !important; min-height: 48px !important; margin-top: 4px !important; }
+
+/* Flatten the wrappers the site nests inside those cards. */
+#registetModal .modal-header,
+#registetModal .modal-body,
+#loginModal .modal-dialog,
+#loginModal .modal-content,
+#loginModal .modal-header,
+#loginModal .modal-body,
+#registetModal .profile,
+#loginModal .profile,
+#registetModal form,
+#loginModal form,
+#loginModal .profile__fields,
+#registetModal .profile__fields,
 .slp-login-card .home-login,
-.slp-login-card form {
-  width: 100% !important;
+.slp-login-card .home-login form.well {
+  position: static !important;
+  display: block !important;
+  width: auto !important;
+  max-width: none !important;
+  min-height: 0 !important;
+  height: auto !important;
   float: none !important;
   margin: 0 !important;
   padding: 0 !important;
-  border: none !important;
-  box-shadow: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
   background: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+  overflow: visible !important;
 }
+.profile__fields,
+.profile__footer {
+  position: static !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.profile .field,
+.profile .field-wrap,
 .slp-login-card .form-group {
-  width: 100% !important;
   display: block !important;
+  width: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.profile .field::after,
+.profile .field::before { display: none !important; }
+.slp-login-card .home-login .form-control {
+  width: 100% !important;
   margin: 0 0 12px !important;
 }
-.slp-login-card .form-control {
-  width: 100% !important;
-  font-size: 15px !important;
-  margin: 0 !important;
-  height: auto !important;
-  padding: 14px 18px !important;
-}
+/* The site draws its own tick on these labels; the native box is enough. */
+.remember-me label::before,
+.remember-me label::after,
+#registetModal label::before,
+#registetModal label::after { display: none !important; }
+.profile br { display: none !important; }
+
+#login-btn,
 .slp-login-card button[type="submit"] {
-  display: block !important;
   width: 100% !important;
-  margin: 8px 0 0 !important;
-  padding: 14px 20px !important;
+  min-height: 48px !important;
+  margin: 4px 0 0 !important;
   font-size: 15px !important;
-  font-weight: 700 !important;
-  color: var(--slp-on-primary) !important;
-  background: linear-gradient(135deg, var(--slp-primary) 0%, var(--slp-primary-c) 100%) !important;
-  border: none !important;
-  border-radius: var(--slp-radius-md) !important;
-  box-shadow: 0 4px 14px rgba(124,0,26,.2) !important;
-}
-
-.remember-me,
-.register-now {
-  font-size: 13px !important;
-  color: var(--slp-on-surface-v) !important;
-  margin: 10px 0 !important;
-}
-
-/* ═══ PAGE-SPECIFIC STYLES (body classes set by page-detector.js) ═══ */
-
-/* ──────── PRODUCT DETAIL PAGE ──────── */
-
-/* Product image — larger on tablet, subtle zoom on hover */
-body.slp-page-product-detail .product-view img,
-body.slp-page-product-detail img.thumbnail,
-body.slp-page-product-detail .main-image img,
-body.slp-page-product-detail #product-image img,
-body.slp-page-product-detail .product-image img,
-body.slp-page-product-detail .image img {
-  max-height: 320px !important; transition: transform .35s var(--slp-ease) !important;
-  border-radius: var(--slp-radius-md) !important;
-  background: var(--slp-surface-c-l) !important;
-  padding: 12px !important;
-}
-body.slp-page-product-detail .product-view img:hover,
-body.slp-page-product-detail img.thumbnail:hover,
-body.slp-page-product-detail .main-image img:hover,
-body.slp-page-product-detail .product-image img:hover {
-  transform: scale(1.04) !important; cursor: zoom-in !important;
-}
-/* Price — larger, bolder, crimson with gold underline accent */
-body.slp-page-product-detail .item-price,
-body.slp-page-product-detail .price,
-body.slp-page-product-detail .product-price,
-body.slp-page-product-detail p.price,
-body.slp-page-product-detail .amount {
-  font-size: 22px !important; font-weight: 800 !important;
-  color: var(--slp-primary) !important;
-  border-bottom: 2px solid var(--slp-secondary) !important;
-  padding-bottom: 4px !important; display: inline-block !important;
-}
-
-/* Add to Cart — prominent crimson gradient, full-width */
-body.slp-page-product-detail .product .add-to-cart,
-body.slp-page-product-detail .btn-success,
-body.slp-page-product-detail .add_to_cart_button,
-body.slp-page-product-detail .single_add_to_cart_button {
-  background: linear-gradient(135deg, var(--slp-primary) 0%, var(--slp-primary-c) 100%) !important;
-  color: var(--slp-on-primary) !important; border: none !important;
-  border-radius: var(--slp-radius-md) !important; padding: 16px 24px !important;
-  font-size: 15px !important; font-weight: 700 !important;
-  letter-spacing: .4px !important; width: 100% !important;
-  box-shadow: 0 4px 16px rgba(124,0,26,.25) !important;
-  margin: 12px 0 0 0 !important; text-transform: none !important;
-  transition: all var(--slp-dur) var(--slp-ease) !important;
-}
-body.slp-page-product-detail .btn-success:active,
-body.slp-page-product-detail .add_to_cart_button:active {
-  transform: scale(0.97) !important;
-  box-shadow: 0 2px 8px rgba(124,0,26,.15) !important;
-}
-
-/* Product description — wider line-height, constrained max-width */
-body.slp-page-product-detail .product-description,
-body.slp-page-product-detail .description,
-body.slp-page-product-detail .woocommerce-product-details__short-description {
-  line-height: 1.8 !important; max-width: 640px !important;
-  font-size: 15px !important; color: var(--slp-on-surface-v) !important;
-}
-
-/* Stock status — green pill badge */
-body.slp-page-product-detail .in-stock,
-body.slp-page-product-detail p.stock.in-stock {
-  display: inline-block !important; background: #EDF7ED !important;
-  color: var(--slp-success) !important; font-size: 12px !important;
-  font-weight: 700 !important; letter-spacing: .4px !important;
-  padding: 6px 14px !important; border-radius: 9999px !important;
-  text-transform: uppercase !important;
-}
-
-/* ──────── CART PAGE ──────── */
-
-/* The /cart-view table has no CSS class — key the treatment on the page
-   class alone. Keep rows as horizontally scrollable table styled by the
-   generic table rules; just polish spacing and the footer bar. */
-body.slp-page-cart table {
-  margin-top: 12px !important;
-}
-body.slp-page-cart .view-cart-footer {
-  background: var(--slp-surface-low) !important;
-  border-radius: var(--slp-radius-md) !important;
-  box-shadow: var(--slp-shadow-1) !important;
-  padding: 14px 16px !important;
-  margin: 12px 0 !important;
-  border: none !important;
-}
-
-/* Quantity inputs — larger touch target, centered */
-body.slp-page-cart input.qty,
-body.slp-page-cart .quantity input.qty,
-body.slp-page-cart input[type="number"].qty {
-  min-height: 44px !important; min-width: 44px !important;
-  max-width: 70px !important; text-align: center !important;
-  font-size: 15px !important; font-weight: 600 !important;
-  padding: 8px !important; margin-bottom: 0 !important;
-}
-
-/* Remove button — subtle red outline */
-body.slp-page-cart a.remove,
-body.slp-page-cart td.product-remove a {
-  display: inline-flex !important; align-items: center !important;
-  justify-content: center !important; width: 32px !important; height: 32px !important;
-  border-radius: var(--slp-radius-sm) !important; border: 1px solid var(--slp-error) !important;
-  color: var(--slp-error) !important; background: transparent !important;
-  font-size: 16px !important; font-weight: 700 !important; text-decoration: none !important;
-  transition: all var(--slp-dur) var(--slp-ease) !important;
-}
-body.slp-page-cart a.remove:hover {
-  background: var(--slp-error) !important; color: white !important;
-}
-
-/* Cart totals row — bold with gold top border */
-body.slp-page-cart .order-total td,
-body.slp-page-cart tr.order-total td,
-body.slp-page-cart .cart-collaterals .order-total td {
-  font-weight: 800 !important; font-size: 16px !important;
-  color: var(--slp-on-surface) !important;
-  border-top: 2px solid var(--slp-secondary) !important; padding-top: 18px !important;
-}
-
-/* Empty cart — centered and friendly */
-body.slp-page-cart .cart-empty,
-body.slp-page-cart .woocommerce-info,
-body.slp-page-cart p.cart-empty {
-  text-align: center !important; padding: 40px 20px !important;
-  font-size: 16px !important; color: var(--slp-outline) !important;
-  font-weight: 500 !important; border-radius: var(--slp-radius-md) !important; background: var(--slp-surface-c-l) !important;
-}
-
-/* Checkout button — full-width, large, prominent */
-body.slp-page-cart .checkout-button,
-body.slp-page-cart .wc-proceed-to-checkout a,
-body.slp-page-cart a.button.checkout-button {
-  display: block !important; width: 100% !important;
-  padding: 18px 28px !important; font-size: 17px !important;
-  font-weight: 800 !important; text-align: center !important;
-  border-radius: var(--slp-radius-md) !important;
-  background: linear-gradient(135deg, var(--slp-primary) 0%, var(--slp-primary-c) 100%) !important;
-  color: var(--slp-on-primary) !important; border: none !important;
-  box-shadow: 0 4px 16px rgba(124,0,26,.25) !important;
-  margin-top: 16px !important; letter-spacing: .4px !important;
-  transition: all var(--slp-dur) var(--slp-ease) !important;
   text-transform: none !important;
 }
-body.slp-page-cart .checkout-button:active {
-  transform: scale(0.97) !important;
+.register-now,
+.remember-me {
+  margin: 14px 0 0 !important;
+  color: var(--slp-on-surface-2) !important;
+  font-size: 13px !important;
+  text-align: center !important;
+  text-transform: none !important;
+}
+.register-now a { font-weight: 600 !important; }
+.remember-me > div,
+.remember-me p {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+}
+.remember-me label {
+  display: inline !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 14px !important;
+}
+.slp-login-card .slp-forgot {
+  display: block !important;
+  margin: 14px 0 0 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  text-align: center !important;
 }
 
-/* ──────── CHECKOUT PAGE ──────── */
+#terms-and-conditions-heading h4 {
+  margin: 8px 0 !important;
+  color: var(--slp-on-surface-2) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+#dec-section {
+  max-height: 168px !important;
+  margin: 0 0 12px !important;
+  padding: 12px 14px !important;
+  border: 1px solid var(--slp-outline-2) !important;
+  border-radius: var(--slp-r-md) !important;
+  background: var(--slp-surface-1) !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+#dec-section h4 { margin: 0 0 6px !important; font-size: 14px !important; }
+#dec-section p,
+#dec-section li {
+  color: var(--slp-on-surface-2) !important;
+  font-size: 12.5px !important;
+  line-height: 1.5 !important;
+}
+#dec-section ol { padding-left: 18px !important; }
+#dec-section hr { margin: 8px 0 !important; }
 
-/* Form sections — card-style containers */
-body.slp-page-checkout .woocommerce-billing-fields,
-body.slp-page-checkout .woocommerce-shipping-fields,
-body.slp-page-checkout .woocommerce-additional-fields,
-body.slp-page-checkout .col2-set .col-1,
-body.slp-page-checkout .col2-set .col-2 {
-  border-radius: var(--slp-radius-md) !important; box-shadow: var(--slp-shadow-2) !important;
-  background: var(--slp-surface-low) !important; padding: 20px !important;
-  margin-bottom: 16px !important; border: 1px solid var(--slp-outline-var) !important;
+/* ================================================================
+   CONTENT PAGES  (contact, downloads, payment methods, general and
+   postage information, terms, standing-order guide)
+   ================================================================ */
+body.slp-page-static #main-content { padding-top: 4px !important; }
+legend,
+.info-pages-title {
+  width: auto !important;
+  margin: 16px 0 12px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  font-size: 22px !important;
+}
+body.slp-page-static #main-content p,
+body.slp-page-static #main-content li,
+body.slp-page-static #main-content td {
+  font-size: 15px !important;
+  line-height: 1.6 !important;
+}
+body.slp-page-static #main-content p,
+body.slp-page-static #main-content li { color: var(--slp-on-surface-2) !important; }
+body.slp-page-static #main-content ul,
+body.slp-page-static #main-content ol { padding-left: 22px !important; margin: 0 0 12px !important; }
+body.slp-page-static #main-content li { margin-bottom: 8px !important; }
+body.slp-page-static #main-content h1 + hr,
+body.slp-page-static #main-content h3 + hr { display: none !important; }
+body.slp-page-static #main-content img { height: auto !important; border-radius: var(--slp-r-md) !important; }
+
+/* contact: .enquiries.form + table#contact-table + map iframe */
+.enquiries.form {
+  margin: 0 0 16px !important;
+  padding: 16px !important;
+  border: 1px solid var(--slp-outline-2) !important;
+  border-radius: var(--slp-r-lg) !important;
+  background: var(--slp-surface) !important;
+}
+.enquiries.form .input { margin: 0 !important; }
+.enquiries.form button { width: 100% !important; min-height: 48px !important; }
+#contact-table { margin: 0 0 16px !important; }
+#contact-table tr { display: block !important; padding: 10px 0 !important; border-bottom: 1px solid var(--slp-outline-2) !important; }
+#contact-table th,
+#contact-table td { display: block !important; padding: 0 !important; border: 0 !important; }
+#contact-table th { font-size: 12px !important; font-weight: 500 !important; }
+#contact-table td { color: var(--slp-on-surface) !important; font-weight: 500 !important; }
+body.slp-page-static #main-content iframe {
+  display: block !important;
+  width: 100% !important;
+  height: 260px !important;
+  border: 1px solid var(--slp-outline-2) !important;
+  border-radius: var(--slp-r-lg) !important;
+}
+/* inject.js swaps the map embed (its API key is rejected) for this link. */
+.slp-map-link { width: 100% !important; min-height: 48px !important; margin: 4px 0 16px !important; }
+
+/* downloads: table.download-items. inject.js marks it .slp-empty when
+   nothing is published, which is the usual state. */
+table.download-items { margin-bottom: 8px !important; }
+table.download-items.slp-empty,
+table.download-items.slp-empty ~ .navigation-pagination { display: none !important; }
+.slp-empty-note {
+  margin: 8px 0 !important;
+  padding: 40px 16px !important;
+  border: 1px dashed var(--slp-outline-2) !important;
+  border-radius: var(--slp-r-lg) !important;
+  color: var(--slp-on-surface-2) !important;
+  font-size: 14px !important;
+  text-align: center !important;
 }
 
-/* Required field indicators — crimson asterisk */
-body.slp-page-checkout label.required::after,
-body.slp-page-checkout .required::after,
-body.slp-page-checkout abbr.required {
-  content: " *" !important; color: var(--slp-error) !important;
-  font-weight: 700 !important; text-decoration: none !important; border: none !important;
+/* ================================================================
+   SMALL TOUCHES
+   ================================================================ */
+.slp-ripple-host { position: relative !important; overflow: hidden !important; }
+.slp-ripple-dot {
+  position: absolute !important;
+  width: 80px !important;
+  height: 80px !important;
+  margin: -40px 0 0 -40px !important;
+  border-radius: 50% !important;
+  background: currentColor !important;
+  opacity: .22;
+  pointer-events: none !important;
+  transform: scale(0);
+  animation: slp-ripple .45s var(--slp-ease) forwards !important;
+}
+@keyframes slp-ripple {
+  to { transform: scale(4); opacity: 0; }
 }
 
-/* Place order button — extra large, full-width */
-body.slp-page-checkout #place_order,
-body.slp-page-checkout .place-order-button {
-  display: block !important; width: 100% !important;
-  padding: 18px 32px !important; font-size: 18px !important;
-  font-weight: 800 !important; letter-spacing: .5px !important;
-  border-radius: var(--slp-radius-md) !important;
-  background: linear-gradient(135deg, var(--slp-primary) 0%, var(--slp-primary-c) 100%) !important;
-  color: var(--slp-on-primary) !important; border: none !important;
-  box-shadow: 0 6px 20px rgba(124,0,26,.3) !important;
-  margin-top: 20px !important; text-transform: none !important;
-  transition: all var(--slp-dur) var(--slp-ease) !important;
-}
-body.slp-page-checkout #place_order:active {
-  transform: scale(0.97) !important;
-}
+img.slp-img { transition: opacity .25s var(--slp-ease) !important; }
+img.slp-img-loading { opacity: 0 !important; }
+img.slp-img-broken { opacity: .35 !important; }
 
-/* ──────── LOGIN / REGISTER PAGES ──────── */
+::-webkit-scrollbar { width: 4px !important; height: 4px !important; }
+::-webkit-scrollbar-thumb { background: var(--slp-outline-2) !important; border-radius: 4px !important; }
 
-/* Form container — centered card */
-body.slp-page-login form,
-body.slp-page-login .login-form,
-body.slp-page-login .woocommerce-form-login,
-body.slp-page-register form,
-body.slp-page-register .register-form,
-body.slp-page-register .woocommerce-form-register {
-  max-width: 440px !important; margin: 24px auto !important;
-  padding: 32px 28px !important; border-radius: var(--slp-radius-lg) !important;
-  background: var(--slp-surface-low) !important;
-  box-shadow: var(--slp-shadow-2) !important;
-}
+/* waitMe - the site's loading veil */
+.waitMe { background: transparent !important; }
+.waitMe_container { border-radius: inherit !important; }
 
-/* Submit — full-width within card */
-body.slp-page-login input[type="submit"],
-body.slp-page-login button[type="submit"],
-body.slp-page-register input[type="submit"],
-body.slp-page-register button[type="submit"] {
-  width: 100% !important; margin-top: 8px !important;
-}
-
-/* Forgot password — subtle, right-aligned */
-body.slp-page-login .lost_password,
-body.slp-page-login .forgot-password,
-body.slp-page-login a.lost-password {
-  text-align: right !important; font-size: 12px !important;
-  font-weight: 500 !important; color: var(--slp-outline) !important;
-  display: block !important; margin-top: 4px !important;
-}
-
-/* ──────── ACCOUNT PAGE ──────── */
-
-/* Order history and profile sections — card containers */
-body.slp-page-account .order-history table,
-body.slp-page-account .woocommerce-MyAccount-content table,
-body.slp-page-account table.orders,
-body.slp-page-account .profile-section,
-body.slp-page-account .account-section {
-  border-radius: var(--slp-radius-md) !important; box-shadow: var(--slp-shadow-2) !important;
-  background: var(--slp-surface-low) !important; padding: 20px !important;
-  margin-bottom: 16px !important; border: 1px solid var(--slp-outline-var) !important;
-}
-
-/* ──────── FULLSCREEN IMAGE OVERLAY ──────── */
-.slp-image-overlay {
-  position: fixed !important; top: 0 !important; left: 0 !important;
-  width: 100% !important; height: 100% !important;
-  background: rgba(0,0,0,.9) !important; z-index: 99999 !important;
-  display: flex !important; align-items: center !important; justify-content: center !important;
-  animation: slpFadeIn .2s var(--slp-ease) !important;
-}
-.slp-image-overlay img {
-  max-width: 95% !important; max-height: 90% !important;
-  object-fit: contain !important; border-radius: 8px !important;
-}
-
-/* ──────── PASSWORD TOGGLE BUTTON ──────── */
-.slp-pw-toggle {
-  position: absolute !important; right: 12px !important; top: 50% !important;
-  transform: translateY(-50%) !important; background: none !important;
-  border: none !important; color: var(--slp-outline) !important;
-  font-size: 13px !important; font-weight: 600 !important;
-  cursor: pointer !important; padding: 8px !important;
-  -webkit-appearance: none !important; appearance: none !important;
-}
-
-/* ──────── PASSWORD STRENGTH INDICATOR ──────── */
-.slp-pw-strength {
-  height: 4px !important; border-radius: 2px !important;
-  margin-top: 6px !important; transition: all .3s var(--slp-ease) !important;
-}
-.slp-pw-strength.weak   { width: 30% !important; background: var(--slp-error) !important; }
-.slp-pw-strength.medium { width: 60% !important; background: var(--slp-secondary) !important; }
-.slp-pw-strength.strong { width: 100% !important; background: var(--slp-success) !important; }
-
-/* ──────── QUANTITY STEPPER ──────── */
-.slp-qty-stepper {
-  display: inline-flex !important; align-items: center !important; gap: 0 !important;
-  border-radius: 8px !important; overflow: hidden !important;
-  border: 1px solid var(--slp-outline-var) !important;
-}
-.slp-qty-stepper button {
-  width: 36px !important; height: 36px !important; border: none !important;
-  background: var(--slp-surface-c-h) !important; color: var(--slp-on-surface) !important;
-  font-size: 18px !important; cursor: pointer !important; display: flex !important;
-  align-items: center !important; justify-content: center !important;
-}
-.slp-qty-stepper input {
-  width: 48px !important; text-align: center !important; border: none !important;
-  border-left: 1px solid var(--slp-outline-var) !important;
-  border-right: 1px solid var(--slp-outline-var) !important;
-  border-radius: 0 !important; margin: 0 !important; padding: 0 !important;
-  font-size: 15px !important; font-weight: 600 !important;
-}
-
-/* ──────── SWIPE DELETE ──────── */
-.slp-swipe-delete {
-  position: absolute !important; right: 0 !important; top: 0 !important;
-  height: 100% !important; width: 80px !important;
-  background: var(--slp-error) !important; color: white !important;
-  display: flex !important; align-items: center !important; justify-content: center !important;
-  font-size: 13px !important; font-weight: 700 !important;
-  border-radius: 0 var(--slp-radius-md) var(--slp-radius-md) 0 !important;
-}
-
-/* ──────── PAGE-SPECIFIC RESPONSIVE ──────── */
-
-/* Product detail: larger image on tablet+ */
-@media (min-width: 768px) {
-  body.slp-page-product-detail img.thumbnail,
-  body.slp-page-product-detail .main-image img,
-  body.slp-page-product-detail .product-image img,
-  body.slp-page-product-detail .image img {
-    max-height: 400px !important;
+/* ──────── WIDER SCREENS (tablets, landscape, foldables) ──────── */
+@media (min-width: 600px) {
+  :root { --slp-gutter: 24px; }
+  #resultPanel > .catagories-heading,
+  #resultPanel > .row,
+  .tab-content > .tab-pane.active,
+  .slp-card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  #slider-carousel img.slider-image { height: 38vw !important; max-height: 360px !important; }
+  body.slp-page-product-detail .product-view > img { max-width: 460px !important; }
+  body.slp-page-product-detail .product table.table-compact:not(#product-view-table) tr {
+    grid-template-columns: minmax(0, 22%) minmax(0, 28%) minmax(0, 22%) minmax(0, 28%) !important;
   }
 }
-
-/* Product detail: sticky add-to-cart on mobile */
-@media (max-width: 767px) {
-  body.slp-page-product-detail .btn-success,
-  body.slp-page-product-detail .add_to_cart_button,
-  body.slp-page-product-detail .single_add_to_cart_button {
-    position: sticky !important; bottom: 0 !important; z-index: 10 !important;
-    border-radius: var(--slp-radius-md) var(--slp-radius-md) 0 0 !important;
-    margin-bottom: 0 !important;
-    box-shadow: 0 -2px 12px rgba(28,27,28,.15) !important;
-  }
+@media (min-width: 900px) {
+  #resultPanel > .catagories-heading,
+  #resultPanel > .row,
+  .tab-content > .tab-pane.active,
+  .slp-card-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  .container { max-width: 1040px !important; margin-left: auto !important; margin-right: auto !important; }
 }
 
-/* Login/Register: reduce card padding on small mobile */
-@media (max-width: 480px) {
-  body.slp-page-login form,
-  body.slp-page-login .login-form,
-  body.slp-page-register form,
-  body.slp-page-register .register-form {
-    padding: 24px 18px !important; margin: 16px auto !important;
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001s !important;
+    transition-duration: .001s !important;
+    scroll-behavior: auto !important;
   }
 }
