@@ -26,6 +26,11 @@
   --slp-primary-container: #FFDAD9;
   --slp-on-primary-container: #410009;
 
+  /* Filled buttons. Same as primary in the light theme; the dark theme
+     keeps them crimson rather than switching to the pale primary. */
+  --slp-filled: #7C001A;
+  --slp-on-filled: #FFFFFF;
+
   --slp-secondary: #835400;
   --slp-secondary-container: #FFDDB5;
   --slp-on-secondary-container: #2A1800;
@@ -65,6 +70,50 @@
   --slp-ease: cubic-bezier(.2, 0, 0, 1);
   --slp-dur: .18s;
   --slp-gutter: 16px;
+}
+
+/* Dark palette. The app sets .slp-dark on <html> when its own theme is
+   dark (MainActivity builds the injector with the current night mode), so
+   the page and the native chrome around it always agree. The values
+   mirror res/values-night/colors.xml. */
+html.slp-dark {
+  color-scheme: dark;
+
+  --slp-primary: #FFB3B2;
+  --slp-primary-2: #FF8A8C;
+  --slp-on-primary: #680014;
+  --slp-primary-container: #900A22;
+  --slp-on-primary-container: #FFDAD9;
+
+  --slp-filled: #B4263B;
+  --slp-on-filled: #FFFFFF;
+
+  --slp-secondary: #FEB959;
+  --slp-secondary-container: #643F00;
+  --slp-on-secondary-container: #FFDDB5;
+
+  --slp-bg: #171213;
+  --slp-surface: #231E1F;
+  --slp-surface-1: #1B1617;
+  --slp-surface-2: #2E2829;
+  --slp-surface-3: #393334;
+  --slp-on-surface: #ECE0E0;
+  --slp-on-surface-2: #D7C1C1;
+  --slp-outline: #A08C8C;
+  --slp-outline-2: #453838;
+
+  --slp-error: #FFB4AB;
+  --slp-error-container: #93000A;
+  --slp-on-error-container: #FFDAD6;
+  --slp-success: #8FD694;
+  --slp-success-container: #1E3A21;
+  --slp-info: #9CCAFF;
+  --slp-info-container: #00497B;
+
+  --slp-scrim: rgba(0, 0, 0, .66);
+  --slp-shadow-1: 0 1px 2px rgba(0, 0, 0, .4);
+  --slp-shadow-2: 0 8px 24px rgba(0, 0, 0, .5);
+  --slp-shadow-bar: 0 -2px 12px rgba(0, 0, 0, .4);
 }
 
 /* ──────── BASE ──────── */
@@ -170,6 +219,61 @@ ul.breadcrumb,
 .no-side-margin { margin-left: 0 !important; margin-right: 0 !important; }
 .no-side-padding { padding-left: 0 !important; padding-right: 0 !important; }
 
+/* ──────── SITE SURFACES ────────
+   Wrappers the site paints white, and Bootstrap components this sheet
+   does not otherwise restyle. Tokenised so they follow the theme. */
+#categories,
+.left-sidebar,
+#left-side-sticky,
+.features_items,
+.category-tab,
+.tab-content,
+.carousel-holder,
+#main-content {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+/* app.css: `#left-side-sticky label, div, select … { color: #000 !important }` */
+#left-side-sticky,
+#left-side-sticky div,
+#left-side-sticky p,
+#left-side-sticky span,
+#left-side-sticky select { color: var(--slp-on-surface) !important; }
+#left-side-sticky label { color: var(--slp-on-surface-2) !important; }
+
+.well,
+.panel,
+.panel-body,
+.list-group-item,
+.popover,
+.dropdown-menu,
+.modal-content {
+  border-color: var(--slp-outline-2) !important;
+  background-color: var(--slp-surface) !important;
+  color: var(--slp-on-surface) !important;
+  box-shadow: none !important;
+}
+.panel-heading,
+.panel-default > .panel-heading,
+.panel-footer,
+.modal-header,
+.modal-footer {
+  border-color: var(--slp-outline-2) !important;
+  background-color: var(--slp-surface-2) !important;
+  color: var(--slp-on-surface) !important;
+}
+.modal-content { border-radius: var(--slp-r-xl) !important; overflow: hidden !important; }
+.modal-footer { display: flex !important; flex-wrap: wrap !important; gap: 8px !important; }
+.modal-footer .btn { flex: 1 1 auto !important; margin: 0 !important; }
+.close {
+  color: var(--slp-on-surface-2) !important;
+  opacity: 1 !important;
+  text-shadow: none !important;
+}
+.text-muted,
+.help-block { color: var(--slp-on-surface-2) !important; }
+p, li, dd, dt, span, strong, b, small { color: inherit; }
+
 /* ──────── BUTTONS ────────
    Three tiers, mapped onto the classes the site already uses:
      filled    - the one action a screen is for (anything that submits)
@@ -227,9 +331,9 @@ button[type="submit"],
 input[type="submit"],
 .remodal-confirm,
 .add-to-cart.btn-danger {
-  background: var(--slp-primary) !important;
-  border-color: var(--slp-primary) !important;
-  color: var(--slp-on-primary) !important;
+  background: var(--slp-filled) !important;
+  border-color: var(--slp-filled) !important;
+  color: var(--slp-on-filled) !important;
 }
 
 /* tonal */
@@ -252,9 +356,9 @@ a.btn-default,
   color: var(--slp-primary) !important;
 }
 .add-to-cart.btn-danger {
-  background: var(--slp-primary) !important;
-  border-color: var(--slp-primary) !important;
-  color: var(--slp-on-primary) !important;
+  background: var(--slp-filled) !important;
+  border-color: var(--slp-filled) !important;
+  color: var(--slp-on-filled) !important;
 }
 
 /* text */
@@ -561,9 +665,9 @@ thead th {
 }
 .simple-pagination li.active span,
 .simple-pagination li.active a {
-  background: var(--slp-primary) !important;
-  border-color: var(--slp-primary) !important;
-  color: var(--slp-on-primary) !important;
+  background: var(--slp-filled) !important;
+  border-color: var(--slp-filled) !important;
+  color: var(--slp-on-filled) !important;
 }
 .simple-pagination li.disabled span { opacity: .45 !important; }
 
@@ -814,8 +918,8 @@ button.btn.view-cart-buttonwithP {
   height: 20px !important;
   padding: 0 6px !important;
   border-radius: 10px !important;
-  background: var(--slp-primary) !important;
-  color: var(--slp-on-primary) !important;
+  background: var(--slp-filled) !important;
+  color: var(--slp-on-filled) !important;
   font-size: 11px !important;
   line-height: 20px !important;
   text-align: center !important;
@@ -915,7 +1019,7 @@ button.btn.view-cart-buttonwithP {
   height: 28px !important;
   border: 0 !important;
   border-radius: 50% !important;
-  background: var(--slp-primary) !important;
+  background: var(--slp-filled) !important;
   box-shadow: var(--slp-shadow-1) !important;
 }
 #slider-range .noUi-handle::before,
@@ -1147,9 +1251,9 @@ label.item-type {
 .nav-tabs > li.active > a,
 .nav-tabs > li.active > a:hover,
 .nav-tabs > li.active > a:focus {
-  border-color: var(--slp-primary) !important;
-  background: var(--slp-primary) !important;
-  color: var(--slp-on-primary) !important;
+  border-color: var(--slp-filled) !important;
+  background: var(--slp-filled) !important;
+  color: var(--slp-on-filled) !important;
 }
 
 /* ── Add-to-cart sheet (remodal) ──
@@ -1660,9 +1764,9 @@ body.slp-page-cart #cart_view_form > .row.no-side-margin:last-of-type .columns >
 body.slp-page-cart #cart_view_form > .row.no-side-margin:last-of-type .btn { width: 100% !important; min-height: 48px !important; }
 body.slp-page-cart #cart_view_form .add-to-cart,
 body.slp-page-cart #continue-shipping {
-  background: var(--slp-primary) !important;
-  border-color: var(--slp-primary) !important;
-  color: var(--slp-on-primary) !important;
+  background: var(--slp-filled) !important;
+  border-color: var(--slp-filled) !important;
+  color: var(--slp-on-filled) !important;
   min-height: 52px !important;
   font-size: 16px !important;
   border-radius: var(--slp-r-pill) !important;
