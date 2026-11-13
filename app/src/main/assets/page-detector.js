@@ -27,7 +27,8 @@
     //   /product/6577       product detail (singular!)
     //   /cart-view          shopping cart
     //   /login              login (server redirects /users/login here)
-    //   /users/register     registration
+    //   /users/register     registration (POST only; the form is on /login)
+    //   /users/password     forgot password
     //   /users/view|edit    account
     function detectFromURL() {
         var path = window.location.pathname.toLowerCase();
@@ -41,8 +42,11 @@
             return (window.location.hash || '').indexOf('registetModal') !== -1 ? 'REGISTER' : 'LOGIN';
         }
         if (/\/register/i.test(path)) return 'REGISTER';
-        if (/\/users\/(view|edit|password)/i.test(path)) return 'ACCOUNT';
-        if (/\/(contact-us|downloads|general-infor|terms-and-conditions|payment-methods|how-to-)/i.test(path)) return 'STATIC';
+        // /users/password is the signed-out "Forgot password" form, not an
+        // account page. Classify it with the sign-in flow.
+        if (/\/users\/password/i.test(path)) return 'LOGIN';
+        if (/\/users\/(view|edit|userEdit)/i.test(path)) return 'ACCOUNT';
+        if (/\/(contact-us|downloads|general-infor|postage-infor|terms-and-conditions|payment-methods|how-to-)/i.test(path)) return 'STATIC';
         return null;
     }
 
@@ -97,50 +101,102 @@
         return t.length > max ? t.substring(0, max) : t;
     }
 
+    /**
+     * The only onProductViewed reporter. inject.js used to send a second one
+     * built from different selectors, so the toolbar title depended on which
+     * call landed last.
+     *
+     * Real markup: the heading is `<h2><i>Buy</i> NAME</h2>` and the price is
+     * `.item-price`. The old price selector fell through to the first
+     * `strong, b` on the page, which is whatever bold text came first.
+     */
     function extractProductDetail() {
-        var title = trimText(document.querySelector('h1, .product h2, .product-title, .product-name') || document.querySelector('title'), 200);
-        var price = trimText(document.querySelector('.item-price, .price, strong, b'), 50);
-        var area = document.querySelector('.product-view, .product-detail, .single-product, article');
-        var img = area
-            ? area.querySelector('img[src]')
-            : document.querySelector('.product-image img, .main-image img, figure img');
-        var imageUrl = img ? img.getAttribute('src') : '';
-        console.log('[SLP PageDetector] Product:', { title: title, price: price, imageUrl: imageUrl });
+        var area = document.querySelector('.product-view') || document;
+        var heading = area.querySelector('h2, h1') || document.querySelector('h1, h2');
+        var title = trimText(heading, 200).replace(/^buy\s+/i, '').replace(/\s+/g, ' ');
+        var price = trimText(document.querySelector('.item-price'), 50);
+        var img = area.querySelector('img[src]');
+        var imageUrl = img ? (img.src || '') : '';
+        var prev = window.__slpProduct;
+        if (prev && prev.url === location.href && prev.title === title) return;
+        window.__slpProduct = { url: location.href, title: title };
         callBridge('onProductViewed', [title, price, imageUrl]);
     }
 
+    // ── Cart count ───────────────────────────────────────────────────────────
+
     /**
-     * Single funnel for the cart count.
+     * The cart badge comes from /updateCartCount, the endpoint the site's own
+     * "My cart (n - Rs. x)" button is filled from. It answers
+     * {"count": <distinct items>, "total": "<amount>"} for guests and
+     * signed-in users alike.
      *
-     * There used to be two reporters - a table-row counter and a badge-text
-     * parser - sharing one window.__slpCartCount cache with incompatible
-     * meanings. The badge scan ran unconditionally after the switch, so on a
-     * cart page it could overwrite what the row counter had just set and
-     * re-fire with a different number: the badge the user saw depended on
-     * which ran last. `source` ranks them so the more reliable one wins.
+     * This replaces two DOM scrapers that were both wrong:
+     *
+     *  - a `table tbody tr` row counter. On /cart-view that also counted the
+     *    nested per-item detail table and the sub-total / postage / grand-total
+     *    rows, so one item reported 9 and an EMPTY cart reported 2;
+     *  - a `.badge` text parser. The only `.badge` on the site is the "+" on
+     *    the search accordion, so every other page reset the count to 0 -
+     *    including straight after adding an item.
      */
-    function reportCartCount(count, source) {
-        var RANK = { badge: 1, table: 2 };
-        var prev = window.__slpCart;
-        if (prev && prev.count === count && prev.source === source) return;
-        // Don't let a page-wide badge guess overwrite an actual cart table.
-        if (prev && RANK[source] < RANK[prev.source] && prev.url === location.href) return;
-        window.__slpCart = { count: count, source: source, url: location.href };
-        console.log('[SLP PageDetector] Cart count:', count, '(' + source + ')');
+    function reportCartCount(count) {
+        if (window.__slpCartCount === count) return;
+        window.__slpCartCount = count;
         callBridge('onCartUpdated', [count]);
     }
 
-    function extractCartCount() {
-        // Skip <tfoot>, which holds subtotal/shipping/total rows - counting
-        // those inflated the badge.
-        var rows = document.querySelectorAll(
-            'table tbody tr, tr.cart_item, .cart-item, .cart-row'
-        );
-        var count = 0;
-        for (var i = 0; i < rows.length; i++) {
-            if (!rows[i].closest('tfoot')) count++;
-        }
-        reportCartCount(count, 'table');
+    function parseCartCount(text) {
+        try {
+            var n = parseInt(JSON.parse(text).count, 10);
+            if (!isNaN(n) && n >= 0) reportCartCount(n);
+        } catch (e) { /* not JSON: signed-out redirect or an error page */ }
+    }
+
+    function fetchCartCount() {
+        if (window.__slpCartFetching) return;
+        window.__slpCartFetching = true;
+        try {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/updateCartCount', true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.onload = function () {
+                window.__slpCartFetching = false;
+                if (xhr.status === 200) parseCartCount(xhr.responseText);
+            };
+            xhr.onerror = xhr.ontimeout = function () { window.__slpCartFetching = false; };
+            xhr.timeout = 15000;
+            xhr.send();
+        } catch (e) { window.__slpCartFetching = false; }
+    }
+
+    /**
+     * Keeps the badge live without a page load: the site adds, updates and
+     * removes cart lines over jQuery AJAX. Reuse the count when the site
+     * fetches it itself, and re-fetch after any other cart mutation.
+     */
+    function hookCartAjax() {
+        if (window.__slpCartHooked) return;
+        var $ = window.jQuery;
+        if (!$ || !$.fn || typeof $(document).ajaxSuccess !== 'function') return;
+        window.__slpCartHooked = true;
+        $(document).ajaxSuccess(function (event, xhr, settings) {
+            var url = (settings && settings.url) || '';
+            if (/updateCartCount/i.test(url)) {
+                parseCartCount(xhr.responseText);
+            } else if (/add-to-cart|update-cart|clear-cart|remove-?from-?cart/i.test(url)) {
+                fetchCartCount();
+            }
+        });
+    }
+
+    function syncCartCount() {
+        hookCartAjax();
+        // Once per document. This file runs at first paint, again at page
+        // finish, and again on every fragment navigation.
+        if (window.__slpCartSynced) return;
+        window.__slpCartSynced = true;
+        fetchCartCount();
     }
 
     function extractAuthState() {
@@ -151,15 +207,13 @@
         // usually relative on this site (/users/view/123), and WebView.loadUrl()
         // does not resolve a relative path against the current page.
         var accountUrl = profile ? (profile.href || '') : '';
-        console.log('[SLP PageDetector] Auth:', { isLoggedIn: isLoggedIn, accountUrl: accountUrl });
+        // Report changes only. This runs on every injection (three or more
+        // per page), and each bridge call is a preferences write plus a hop to
+        // the UI thread on the native side.
+        var key = isLoggedIn + '|' + accountUrl;
+        if (window.__slpAuth === key) return;
+        window.__slpAuth = key;
         callBridge('onAuthStateChanged', [isLoggedIn, accountUrl]);
-    }
-
-    function extractCartBadge() {
-        var badge = document.querySelector('.cart-count, .cart-badge, .badge, .items-count, .cart-qty');
-        if (!badge) return;
-        var count = parseInt((badge.textContent || '0').replace(/\D/g, ''), 10) || 0;
-        reportCartCount(count, 'badge');
     }
 
     // ── Main ─────────────────────────────────────────────────────────────────
@@ -213,10 +267,7 @@
         }
 
         // Context extraction per page type
-        switch (typeEnum) {
-            case 'PRODUCT_DETAIL': extractProductDetail(); break;
-            case 'CART': extractCartCount(); break;
-        }
+        if (typeEnum === 'PRODUCT_DETAIL') extractProductDetail();
 
         // Auth state is read on EVERY page, not just LOGIN/REGISTER/ACCOUNT.
         // Logging out redirects to "/", which classifies as HOME, so gating
@@ -225,8 +276,7 @@
         // land on a login page again.
         extractAuthState();
 
-        // Always scan for cart badge
-        extractCartBadge();
+        syncCartCount();
     }
 
     if (document.readyState === 'loading') {
