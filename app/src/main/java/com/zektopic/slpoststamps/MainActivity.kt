@@ -46,13 +46,6 @@ class MainActivity : AppCompatActivity() {
         /** Schemes handed to another app rather than rendered in the WebView. */
         private val EXTERNAL_SCHEMES = setOf("mailto", "tel", "sms", "smsto", "geo", "market")
 
-        /**
-         * Path fragments that perform an action on GET. Persisting one of these
-         * as the resume URL would silently repeat the action on next launch.
-         */
-        private val NON_RESUMABLE_PATHS =
-            listOf("/add-to-cart", "/logout", "/remove", "/delete", "/cart-add")
-
         private const val PREFS_NAME       = "slp_state"
         private const val KEY_LOGGED_IN    = "logged_in"
         private const val KEY_ACCOUNT_URL  = "account_url"
@@ -188,19 +181,18 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * True if the URL is safe to reopen on a cold start. This site mutates
-     * state via GET (/add-to-cart, /logout), so replaying the last URL blindly
-     * would re-add items to the cart or sign the user out on next launch.
+     * state via GET (/clear-cart, /logout), so replaying the last URL blindly
+     * would empty the cart or sign the user out on next launch.
      */
-    private fun isResumable(url: String): Boolean {
-        if (!isTrustedUrl(url)) return false
-        val path = Uri.parse(url).path?.lowercase() ?: return false
-        return NON_RESUMABLE_PATHS.none { path.contains(it) }
-    }
+    private fun isResumable(url: String): Boolean =
+        isTrustedUrl(url) && ResumePolicy.isResumablePath(Uri.parse(url).path)
 
     /** Cold-start URL: resume the last visited on-site page, else home. */
     private fun resumeUrl(): String {
+        // isResumable, not just isTrustedUrl: a URL stored by an older build
+        // was filtered against a shorter list than the current one.
         val last = prefs.getString(KEY_LAST_URL, null)
-        return if (isTrustedUrl(last)) last!! else TARGET_URL
+        return if (last != null && isResumable(last)) last else TARGET_URL
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
