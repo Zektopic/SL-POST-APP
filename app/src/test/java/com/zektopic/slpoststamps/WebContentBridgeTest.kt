@@ -56,6 +56,15 @@ class WebContentBridgeTest {
     }
 
     @Test
+    fun setPullToRefreshEnabled_reachesCallback() {
+        val seen = mutableListOf<Boolean>()
+        val bridge = WebContentBridge({ _, _ -> }, { _, _ -> }, {}, { _, _, _ -> }, { seen += it })
+        bridge.setPullToRefreshEnabled(false)
+        bridge.setPullToRefreshEnabled(true)
+        assertEquals(listOf(false, true), seen)
+    }
+
+    @Test
     fun onPageDetected_unknownStringFallsBackToUnknown() {
         var type: PageType? = null
         bridge(onPage = { t, _ -> type = t }).onPageDetected("not-a-page-type", "{}")

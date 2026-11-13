@@ -1,35 +1,69 @@
 <resources>
     <string name="app_name">Sri Lanka Philately</string>
+    <string name="app_tagline">Official Philatelic Bureau</string>
+    <string name="brand_publisher">Sri Lanka Post</string>
+    <string name="brand_bureau">Philatelic Bureau</string>
+
+    <!-- Bottom bar -->
+    <string name="nav_home">Home</string>
+    <string name="nav_browse">Browse</string>
+    <string name="nav_cart">Cart</string>
+    <string name="nav_account">Account</string>
+    <string name="nav_login">Sign in</string>
+
+    <!-- Drawer -->
+    <string name="nav_signup">Create account</string>
+    <string name="nav_my_account">My account</string>
+    <string name="nav_logout">Sign out</string>
+    <string name="nav_payment_methods">Payment methods</string>
+    <string name="nav_standing_orders">Standing orders guide</string>
+    <string name="nav_downloads">Downloads</string>
+    <string name="nav_general_info">General information</string>
+    <string name="nav_terms">Terms &amp; conditions</string>
+    <string name="nav_contact">Contact us</string>
+    <string name="drawer_open">Open navigation menu</string>
+    <string name="drawer_close">Close navigation menu</string>
+
+    <!-- Toolbar subtitle, by page -->
+    <string name="subtitle_default">Official Philatelic Bureau</string>
+    <string name="subtitle_browse">Browse stamps</string>
+    <string name="subtitle_product">Product details</string>
+    <string name="subtitle_cart">Shopping cart</string>
+    <string name="subtitle_checkout">Checkout</string>
+    <string name="subtitle_login">Sign in</string>
+    <string name="subtitle_register">Create account</string>
+    <string name="subtitle_account">My account</string>
+    <string name="subtitle_static">Information</string>
+
+    <!-- Toolbar actions -->
+    <string name="action_search">Search</string>
+    <string name="search_hint">Search stamps, covers, years…</string>
+    <string name="action_share">Share</string>
+    <string name="action_refresh">Refresh</string>
+    <string name="action_open_in_browser">Open in browser</string>
+    <string name="share_chooser_title">Share via</string>
+
+    <!-- Dialogs raised by the page (alert / confirm) -->
+    <string name="dialog_ok">OK</string>
+    <string name="dialog_cancel">Cancel</string>
+
+    <!-- Loading and error states -->
+    <string name="loading_content_description">Loading the store</string>
+    <string name="error_offline_title">You\'re offline</string>
+    <string name="error_offline_message">Check your connection. The store will reload on its own when you\'re back online.</string>
+    <string name="error_unreachable_title">Can\'t reach the store</string>
+    <string name="error_unreachable_message">The Philatelic Bureau site isn\'t answering. It may be busy or down for maintenance.</string>
+    <string name="error_server_title">The store has a problem</string>
+    <string name="error_server_message">The Philatelic Bureau site returned an error. Try again in a moment.</string>
+    <string name="error_generic_title">This page didn\'t load</string>
+    <string name="error_generic_message">Something went wrong while loading. Try again.</string>
+    <string name="action_retry">Try again</string>
+    <string name="error_http_status">HTTP %1$d</string>
+
+    <!-- Links and downloads -->
     <string name="error_no_app_to_open_link">No app available to open this link</string>
     <string name="download_started">Download started</string>
     <string name="download_in_progress">Downloading from SL Post Stamps</string>
     <string name="error_download_failed">Could not start the download</string>
     <string name="error_download_needs_storage">Storage permission is required to save downloads</string>
-
-    <!-- Navigation -->
-    <string name="nav_home">Home</string>
-    <string name="nav_browse">Browse</string>
-    <string name="nav_cart">Cart</string>
-    <string name="nav_account">Account</string>
-    <string name="nav_login">Login</string>
-    <string name="nav_signup">Sign Up</string>
-    <string name="nav_my_account">My Account</string>
-    <string name="nav_logout">Logout</string>
-    <string name="nav_payment_methods">Payment Methods</string>
-    <string name="nav_standing_orders">Standing Orders Guide</string>
-    <string name="nav_downloads">Downloads</string>
-    <string name="nav_general_info">General Information</string>
-    <string name="nav_terms">Terms &amp; Conditions</string>
-    <string name="nav_contact">Contact Us</string>
-    <string name="drawer_open">Open navigation menu</string>
-    <string name="drawer_close">Close navigation menu</string>
-    <string name="subtitle_default">OFFICIAL PHILATELIC BUREAU</string>
-    <string name="subtitle_browse">Browse Stamps</string>
-    <string name="subtitle_product">Product Details</string>
-    <string name="subtitle_cart">Shopping Cart</string>
-    <string name="subtitle_checkout">Checkout</string>
-    <string name="subtitle_login">Sign In</string>
-    <string name="subtitle_register">Create Account</string>
-    <string name="subtitle_account">My Account</string>
-    <string name="subtitle_static">Information</string>
 </resources>

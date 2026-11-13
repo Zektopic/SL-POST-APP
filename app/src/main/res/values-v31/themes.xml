@@ -1,0 +1,13 @@
+<resources>
+    <!--
+        Android 12+ draws its own splash screen before the first frame. Give it
+        the same crimson as the in-app loading screen that follows, so the two
+        read as one screen rather than a white flash and then a red one.
+    -->
+    <style name="Theme.SLPOSTSTAMPS" parent="Base.Theme.SLPOSTSTAMPS">
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
+        <item name="android:windowSplashScreenBackground">@color/slp_brand</item>
+    </style>
+</resources>

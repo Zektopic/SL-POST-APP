@@ -1,70 +1,70 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Legacy names kept so nothing else breaks -->
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+<!--
+    Light palette. values-night/colors.xml redefines every name below except
+    the slp_brand_* group, so a layout that references a colour here follows
+    the system theme without a second layout or a second theme.
 
-    <!-- ── PRIMARY (Sri Lanka Post Crimson) ── -->
+    inject.css carries the same palette as CSS custom properties; when one
+    changes, change the other.
+-->
+<resources>
+    <!-- Primary - Sri Lanka Post crimson -->
     <color name="md_primary">#7C001A</color>
-    <color name="md_primary_dark">#A01A2C</color>
-    <color name="md_primary_light">#FFB3B2</color>
-    <color name="md_primary_container">#FFDAD9</color>
     <color name="md_on_primary">#FFFFFF</color>
+    <color name="md_primary_container">#FFDAD9</color>
     <color name="md_on_primary_container">#410009</color>
 
-    <!-- ── SECONDARY (Heritage Gold) ── -->
+    <!-- Secondary - heritage gold -->
     <color name="md_secondary">#835400</color>
-    <color name="md_secondary_container">#FEB959</color>
     <color name="md_on_secondary">#FFFFFF</color>
-    <color name="md_on_secondary_container">#734A00</color>
+    <color name="md_secondary_container">#FFDDB5</color>
+    <color name="md_on_secondary_container">#2A1800</color>
 
-    <!-- ── TERTIARY (Archive Teal) ── -->
+    <!-- Tertiary - archive blue -->
     <color name="md_tertiary">#003D66</color>
-    <color name="md_tertiary_container">#00558B</color>
     <color name="md_on_tertiary">#FFFFFF</color>
-    <color name="md_on_tertiary_container">#98C9FF</color>
+    <color name="md_tertiary_container">#D0E4FF</color>
+    <color name="md_on_tertiary_container">#001D35</color>
 
-    <!-- ── SURFACE & BACKGROUND ── -->
+    <!-- Background and surfaces -->
     <color name="md_background">#FDF8F9</color>
+    <color name="md_on_background">#1C1B1C</color>
     <color name="md_surface">#FDF8F9</color>
+    <color name="md_on_surface">#1C1B1C</color>
+    <color name="md_surface_variant">#F1DEDE</color>
+    <color name="md_on_surface_variant">#594140</color>
+    <color name="md_surface_container_lowest">#FFFFFF</color>
+    <color name="md_surface_container_low">#F7F2F3</color>
     <color name="md_surface_container">#F1EDEE</color>
     <color name="md_surface_container_high">#EBE7E8</color>
-    <color name="md_surface_container_low">#F7F2F3</color>
-    <color name="md_surface_container_lowest">#FFFFFF</color>
-    <color name="md_surface_variant">#E6E1E2</color>
-    <color name="md_on_background">#1C1B1C</color>
-    <color name="md_on_surface">#1C1B1C</color>
-    <color name="md_on_surface_variant">#594140</color>
+    <color name="md_surface_container_highest">#E6E1E2</color>
 
-    <!-- ── OUTLINE ── -->
     <color name="md_outline">#8D7070</color>
-    <color name="md_outline_variant">#E1BEBE</color>
+    <color name="md_outline_variant">#EADADA</color>
 
-    <!-- ── ERROR ── -->
     <color name="md_error">#BA1A1A</color>
-    <color name="md_error_container">#FFDAD6</color>
     <color name="md_on_error">#FFFFFF</color>
-    <color name="md_on_error_container">#93000A</color>
+    <color name="md_error_container">#FFDAD6</color>
+    <color name="md_on_error_container">#410002</color>
 
-    <!-- ── SURFACE TINT ── -->
-    <color name="md_surface_tint">#B22837</color>
+    <!-- The toolbar, the bottom bar and the drawer share one surface. -->
+    <color name="slp_chrome">#FFFFFF</color>
 
-    <!-- ── DARK-THEME VARIANTS ── -->
-    <color name="md_primary_dark_theme">#FFB3B2</color>
-    <color name="md_on_primary_dark_theme">#680014</color>
-    <color name="md_primary_container_dark">#900A22</color>
-    <color name="md_on_primary_container_dark">#FFDAD9</color>
-    <color name="md_secondary_dark_theme">#FEB959</color>
-    <color name="md_on_secondary_dark_theme">#462A00</color>
-    <color name="md_secondary_container_dark">#643F00</color>
-    <color name="md_on_secondary_container_dark">#FFDDB5</color>
-    <color name="md_background_dark">#1C1B1C</color>
-    <color name="md_surface_dark">#1C1B1C</color>
-    <color name="md_surface_variant_dark">#594140</color>
-    <color name="md_on_background_dark">#E6E1E2</color>
-    <color name="md_on_surface_dark">#E6E1E2</color>
-    <color name="md_on_surface_variant_dark">#E1BEBE</color>
-    <color name="md_outline_dark">#A88B8A</color>
-    <color name="md_error_dark">#FFB4AB</color>
-    <color name="md_on_error_dark">#690005</color>
+    <!--
+        Filled buttons and the cart badge. Crimson in both themes (lighter at
+        night), matching the page's filled buttons, rather than Material's
+        default of switching to the pale primary on dark.
+    -->
+    <color name="slp_filled">#7C001A</color>
+    <color name="slp_on_filled">#FFFFFF</color>
+
+    <!--
+        Brand colours that do NOT change with the theme: the launcher icon,
+        the system splash screen and the loading screen are crimson in both.
+    -->
+    <color name="slp_brand">#7C001A</color>
+    <color name="slp_brand_end">#A01A2C</color>
+    <color name="slp_on_brand">#FFFFFF</color>
+    <color name="slp_on_brand_muted">#CCFFFFFF</color>
+    <color name="slp_on_brand_track">#33FFFFFF</color>
 </resources>

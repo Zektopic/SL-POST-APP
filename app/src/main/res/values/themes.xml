@@ -1,45 +1,58 @@
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources>
 
+    <!--
+        One theme for both light and dark. Every colour attribute points at a
+        @color/md_* resource, and values-night/colors.xml redefines those, so
+        there is no values-night/themes.xml to keep in step.
+    -->
     <style name="Base.Theme.SLPOSTSTAMPS" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Primary — Sri Lanka Post Crimson -->
         <item name="colorPrimary">@color/md_primary</item>
         <item name="colorOnPrimary">@color/md_on_primary</item>
         <item name="colorPrimaryContainer">@color/md_primary_container</item>
         <item name="colorOnPrimaryContainer">@color/md_on_primary_container</item>
-        <!-- Secondary — Heritage Gold -->
+
         <item name="colorSecondary">@color/md_secondary</item>
         <item name="colorOnSecondary">@color/md_on_secondary</item>
         <item name="colorSecondaryContainer">@color/md_secondary_container</item>
         <item name="colorOnSecondaryContainer">@color/md_on_secondary_container</item>
-        <!-- Tertiary — Archive Teal -->
+
         <item name="colorTertiary">@color/md_tertiary</item>
         <item name="colorOnTertiary">@color/md_on_tertiary</item>
         <item name="colorTertiaryContainer">@color/md_tertiary_container</item>
         <item name="colorOnTertiaryContainer">@color/md_on_tertiary_container</item>
-        <!-- Surface & Background -->
+
         <item name="android:colorBackground">@color/md_background</item>
-        <item name="colorSurface">@color/md_surface</item>
-        <item name="colorSurfaceVariant">@color/md_surface_variant</item>
         <item name="colorOnBackground">@color/md_on_background</item>
+        <item name="colorSurface">@color/md_surface</item>
         <item name="colorOnSurface">@color/md_on_surface</item>
+        <item name="colorSurfaceVariant">@color/md_surface_variant</item>
         <item name="colorOnSurfaceVariant">@color/md_on_surface_variant</item>
-        <!-- Outline -->
+        <item name="colorSurfaceContainerLowest">@color/md_surface_container_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/md_surface_container_low</item>
+        <item name="colorSurfaceContainer">@color/md_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/md_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/md_surface_container_highest</item>
+
         <item name="colorOutline">@color/md_outline</item>
         <item name="colorOutlineVariant">@color/md_outline_variant</item>
-        <!-- Error -->
+
         <item name="colorError">@color/md_error</item>
-        <item name="colorErrorContainer">@color/md_error_container</item>
         <item name="colorOnError">@color/md_on_error</item>
+        <item name="colorErrorContainer">@color/md_error_container</item>
         <item name="colorOnErrorContainer">@color/md_on_error_container</item>
-        <!-- Shape -->
+
         <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.SLP.Small</item>
         <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.SLP.Medium</item>
         <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.SLP.Large</item>
     </style>
 
-    <style name="Theme.SLPOSTSTAMPS" parent="Base.Theme.SLPOSTSTAMPS" />
+    <style name="Theme.SLPOSTSTAMPS" parent="Base.Theme.SLPOSTSTAMPS">
+        <!-- Edge-to-edge: the bars are transparent and the layout draws behind them. -->
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
+    </style>
 
-    <!-- ── Shape overrides ── -->
     <style name="ShapeAppearance.SLP.Small" parent="ShapeAppearance.Material3.SmallComponent">
         <item name="cornerSize">8dp</item>
     </style>
@@ -50,7 +63,6 @@
         <item name="cornerSize">24dp</item>
     </style>
 
-    <!-- ── Toolbar typography ── -->
     <style name="SLP.Toolbar.Title" parent="TextAppearance.Material3.TitleLarge">
         <item name="android:textColor">@color/md_primary</item>
         <item name="android:textSize">20sp</item>
@@ -60,9 +72,13 @@
     </style>
     <style name="SLP.Toolbar.Subtitle" parent="TextAppearance.Material3.LabelMedium">
         <item name="android:textColor">@color/md_on_surface_variant</item>
-        <item name="android:textSize">11sp</item>
-        <item name="android:letterSpacing">0.06</item>
-        <item name="android:textAllCaps">true</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+
+    <!-- The pill behind the selected bottom-bar item. -->
+    <style name="SLP.BottomNav.ActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:color">@color/md_primary_container</item>
     </style>
 
 </resources>

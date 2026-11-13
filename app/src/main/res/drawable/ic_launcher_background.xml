@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Adaptive icon background — Sri Lanka Post Crimson -->
+<!-- Adaptive icon background - Sri Lanka Post crimson -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#7C001A" />
+    <solid android:color="@color/slp_brand" />
 </shape>
